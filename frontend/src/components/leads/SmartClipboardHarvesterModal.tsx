@@ -34,7 +34,7 @@ interface ExtractedItem {
   linktreeUrl: string | null;
 }
 
-const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}/gi;
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}\b/gi;
 const PHONE_REGEX = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3,5}\)?[-.\s]?\d{3,5}[-.\s]?\d{3,5}/g;
 const INSTA_REGEX = /(?:https?:\/\/(?:www\.)?instagram\.com\/|(?:^|[^a-zA-Z0-9._%+-])@)([a-zA-Z0-9._]{3,30})(?![a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
 const LINKEDIN_REGEX = /(https?:\/\/(?:www\.)?linkedin\.com\/(?:in|company)\/[a-zA-Z0-9_-]+)/gi;
@@ -161,7 +161,10 @@ export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboard
       const linktree = trimmed.match(LINKTREE_REGEX);
       const urls = trimmed.match(URL_REGEX);
 
-      const email = emails ? emails[0].toLowerCase() : null;
+      let email = emails ? emails[0].toLowerCase() : null;
+      if (email) {
+        email = email.replace(/(\.(?:com|org|net|io|in|co|ai|biz|dev|info|me|app|gov|edu))[a-z]+$/i, '$1');
+      }
       const phone = phones ? phones.find((p) => p.replace(/[^0-9+]/g, '').length >= 10) || null : null;
       const instagramHandle = instas.length > 0 ? `@${instas[0]}` : null;
       const linkedinUrl = linkedin ? linkedin[0] : null;
