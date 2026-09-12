@@ -12,7 +12,6 @@ import {
   Globe,
   WarningOctagon,
   CheckCircle,
-  Compass,
   CircleNotch,
   Broadcast,
   ClipboardText,
@@ -24,6 +23,7 @@ import {
   ChartLineUp,
 } from '@phosphor-icons/react';
 import { SmartClipboardHarvesterModal } from './SmartClipboardHarvesterModal';
+import logoSymbol from '@/assets/Setuleads_logo.svg';
 import type { LeadSourceProviderId, UnifiedSearchResult } from '@/types/leadSource';
 
 export function LeadSourceSearch() {
@@ -102,36 +102,73 @@ export function LeadSourceSearch() {
 
   return (
     <div className="space-y-8 mb-8">
-      {/* Editorial Hero Section */}
-      <div className="inspected-panel bg-[#101010] border border-[#222222] p-8 relative overflow-hidden">
-        {/* Subtle orange radial background light */}
+      {/* Dark Editorial Brutalist Workstation Hero Section */}
+      <div className="inspected-panel bg-[#101010] border border-[#222222] p-8 relative overflow-hidden group">
+        {/* Subtle background glow */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#FF4A00]/5 rounded-full blur-3xl pointer-events-none" />
 
+        {/* Technical Blueprint Vector Grid */}
+        <div 
+          className="absolute inset-0 bg-[linear-gradient(to_right,#1a1a1a_1px,transparent_1px),linear-gradient(to_bottom,#1a1a1a_1px,transparent_1px)] bg-[size:32px_32px] opacity-25 pointer-events-none z-0" 
+        />
+
+        {/* Tactile Film Grain Overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.04] pointer-events-none z-0 mix-blend-overlay"
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+        />
+
+        {/* Restrained System Scan Line Animation */}
+        <motion.div
+          className="absolute left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#FF4A00]/80 to-transparent pointer-events-none z-20 shadow-[0_0_8px_rgba(255,74,0,0.5)]"
+          animate={{ top: ['0%', '100%'], opacity: [0, 1, 1, 0] }}
+          transition={{ repeat: Infinity, duration: 6, ease: 'linear' }}
+        />
+
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 relative z-10">
-          <div>
-            <div className="inline-flex items-center gap-2 mb-3 px-2 py-0.5 border border-[#FF4A00]/30 bg-[#FF4A00]/10 font-mono text-[10px] text-[#FF4A00] uppercase tracking-widest">
-              <Compass size={14} className="animate-pulse" />
-              INSPECTION ROOM // PROSPECT INTELLIGENCE WORKSTATION
+          <div className="space-y-4">
+            {/* Primary Brand Lockup & Workstation Descriptor */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Brand Name Lockup */}
+              <div className="flex items-center gap-2.5 px-3 py-1.5 border border-[#222222] bg-[#080808]">
+                <img
+                  src={logoSymbol}
+                  alt="SetuLeads Logo"
+                  className="h-4 w-4 object-contain filter drop-shadow-[0_0_4px_rgba(255,74,0,0.4)]"
+                />
+                <span className="font-mono text-sm md:text-[15px] font-bold text-[#F4F0E8] uppercase tracking-wider">
+                  SETULEADS
+                </span>
+              </div>
+
+              {/* Metadata Sub-Label */}
+              <div className="inline-flex items-center gap-2 px-2.5 py-1.5 border border-[#222222] bg-[#080808] font-mono text-[10px] text-[#8E8982] uppercase tracking-widest">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FF4A00] animate-pulse" />
+                INSPECTION ROOM / PROSPECT DISCOVERY
+              </div>
             </div>
 
+            {/* Headline */}
             <h1 className="font-display text-3xl md:text-5xl font-bold tracking-tight text-[#F4F0E8] uppercase leading-none">
               FIND BUSINESSES <br />
-              <span className="font-serif italic text-[#FF4A00] font-normal lowercase">worth building for.</span>
+              <span className="font-serif italic text-[#FF4A00] font-normal lowercase">worth building for:</span>
             </h1>
 
-            <p className="font-mono text-xs text-[#8E8982] mt-3 max-w-xl">
+            {/* Refined Technical Description */}
+            <p className="font-mono text-xs text-[#8E8982] max-w-xl leading-relaxed">
               Discover prospects. Inspect their web presence. Find the website redesign opportunity.
-              Determined factually with Gemini semantic qualification.
+              Qualify candidates with Gemini semantic analysis.
             </p>
           </div>
 
+          {/* Action Control */}
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               size="sm"
               variant="outline"
               onClick={() => setIsClipboardModalOpen(true)}
-              className="font-mono text-xs border-[#FF4A00]/60 text-[#FF4A00] bg-[#FF4A00]/10 hover:bg-[#FF4A00]/20 flex items-center gap-1.5 font-bold"
+              className="font-mono text-xs border-[#FF4A00]/60 text-[#FF4A00] bg-[#FF4A00]/10 hover:bg-[#FF4A00]/20 flex items-center gap-1.5 font-bold shadow-[0_0_10px_rgba(255,74,0,0.1)] transition-all"
             >
               <ClipboardText size={15} />
               Smart Text Harvester
@@ -139,9 +176,10 @@ export function LeadSourceSearch() {
           </div>
         </div>
 
-        {/* Source Provider Selector */}
-        <div className="mt-6 pt-4 border-t border-[#222222] flex flex-wrap items-center justify-between gap-3">
-          <span className="font-mono text-[10px] uppercase text-[#8E8982] tracking-wider">
+        {/* Discovery Sources Row with Pulsing Highlights */}
+        <div className="mt-6 pt-4 border-t border-[#222222] flex flex-wrap items-center justify-between gap-3 relative z-10">
+          <span className="font-mono text-[10px] uppercase text-[#8E8982] tracking-wider flex items-center gap-2">
+            <span className="w-1 h-1 bg-[#8E8982] rounded-full" />
             Active Discovery Sources:
           </span>
 
@@ -151,11 +189,11 @@ export function LeadSourceSearch() {
               onClick={() => toggleProvider('geoapify')}
               className={`font-mono text-xs px-3 py-1 border transition-all flex items-center gap-2 uppercase tracking-wider ${
                 selectedProviders.includes('geoapify')
-                  ? 'bg-[#151515] text-[#F4F0E8] border-[#FF4A00] font-bold'
+                  ? 'bg-[#151515] text-[#F4F0E8] border-[#FF4A00] font-bold shadow-[0_0_10px_rgba(255,74,0,0.12)]'
                   : 'text-[#8E8982] border-transparent hover:text-[#F4F0E8]'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FF4A00]" />
+              <span className={`w-1.5 h-1.5 rounded-full ${selectedProviders.includes('geoapify') ? 'bg-[#FF4A00] animate-pulse' : 'bg-[#8E8982]'}`} />
               Geoapify
             </button>
 
@@ -164,11 +202,11 @@ export function LeadSourceSearch() {
               onClick={() => toggleProvider('osm')}
               className={`font-mono text-xs px-3 py-1 border transition-all flex items-center gap-2 uppercase tracking-wider ${
                 selectedProviders.includes('osm')
-                  ? 'bg-[#151515] text-[#F4F0E8] border-[#4E8752] font-bold'
+                  ? 'bg-[#151515] text-[#F4F0E8] border-[#00E599] font-bold shadow-[0_0_10px_rgba(0,229,153,0.12)]'
                   : 'text-[#8E8982] border-transparent hover:text-[#F4F0E8]'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#4E8752]" />
+              <span className={`w-1.5 h-1.5 rounded-full ${selectedProviders.includes('osm') ? 'bg-[#00E599] animate-pulse' : 'bg-[#8E8982]'}`} />
               OpenStreetMap (OSM)
             </button>
 
@@ -177,11 +215,11 @@ export function LeadSourceSearch() {
               onClick={() => toggleProvider('social_xray')}
               className={`font-mono text-xs px-3 py-1 border transition-all flex items-center gap-2 uppercase tracking-wider ${
                 selectedProviders.includes('social_xray')
-                  ? 'bg-[#151515] text-[#F4F0E8] border-[#C43D1C] font-bold'
+                  ? 'bg-[#151515] text-[#F4F0E8] border-[#FF4A00] font-bold shadow-[0_0_10px_rgba(255,74,0,0.12)]'
                   : 'text-[#8E8982] border-transparent hover:text-[#F4F0E8]'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#C43D1C]" />
+              <span className={`w-1.5 h-1.5 rounded-full ${selectedProviders.includes('social_xray') ? 'bg-[#FF4A00] animate-pulse' : 'bg-[#8E8982]'}`} />
               Social X-Ray
             </button>
           </div>
