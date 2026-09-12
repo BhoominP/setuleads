@@ -1,0 +1,30 @@
+# Logs & Temporary Files
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Frontend Build & Dependencies
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/.env.local
+
+# Root level node_modules / dist fallback
+node_modules
+dist
+
+# Backend Build & Target Output
+backend/target/
+backend/.mvn/
+backend/*.log
+
+# IDE & OS Artifacts
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.sln
+*.sw?

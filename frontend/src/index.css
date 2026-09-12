@@ -1,0 +1,150 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-base: #080808;
+  --color-panel: #101010;
+  --color-surface: #151515;
+  --color-border: #222222;
+  --color-border-bright: #333333;
+  --color-ink: #F4F0E8;
+  --color-ink-muted: #CFC8BE;
+  --color-muted-foreground: #8E8982;
+  --color-orange-primary: #FF4A00;
+  --color-orange-bright: #FF5A00;
+  --color-orange-burnt: #C43D1C;
+  --color-red-deep: #7F1D1D;
+  --color-red-muted: #A9362A;
+  --color-rust: #FF4A00;
+  --color-sage: #4E8752;
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-serif: "Instrument Serif", serif;
+  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+:root {
+  --background: #080808;
+  --foreground: #F4F0E8;
+  --card: #101010;
+  --card-foreground: #F4F0E8;
+  --popover: #101010;
+  --popover-foreground: #F4F0E8;
+  --primary: #FF4A00;
+  --primary-foreground: #F4F0E8;
+  --secondary: #151515;
+  --secondary-foreground: #F4F0E8;
+  --muted: #151515;
+  --muted-foreground: #8E8982;
+  --accent: #222222;
+  --accent-foreground: #F4F0E8;
+  --destructive: #7F1D1D;
+  --border: #222222;
+  --input: #222222;
+  --ring: #FF4A00;
+  --radius: 0px;
+}
+
+@layer base {
+  body {
+    background-color: #080808;
+    color: #F4F0E8;
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Film Grain Overlay */
+.film-grain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Corner-bracket Architectural Inspection Motif */
+.inspected-panel {
+  position: relative;
+}
+.inspected-panel::before,
+.inspected-panel::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: #FF4A00;
+  pointer-events: none;
+  opacity: 0.8;
+}
+.inspected-panel::before {
+  top: -1px; left: -1px;
+  border-top: 1.5px solid; border-left: 1.5px solid;
+}
+.inspected-panel::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 1.5px solid; border-right: 1.5px solid;
+}
+
+/* Editorial Rectangular Button Hover Fill Effect */
+.btn-editorial {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  border: 1px solid #FF4A00;
+  color: #F4F0E8;
+  background-color: rgba(255, 74, 0, 0.1);
+  z-index: 1;
+}
+.btn-editorial::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background-color: #FF4A00;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: -1;
+}
+.btn-editorial:hover::before {
+  transform: translateX(100%);
+}
+.btn-editorial:hover {
+  color: #080808;
+  border-color: #FF5A00;
+  box-shadow: 0 0 12px rgba(255, 74, 0, 0.35);
+}
+
+/* Custom Sleek Dark Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #080808;
+  border-left: 1px solid #151515;
+}
+::-webkit-scrollbar-thumb {
+  background: #222222;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FF4A00;
+}
