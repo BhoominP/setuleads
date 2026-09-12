@@ -16,8 +16,8 @@ export async function apiClient(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 60000);
+  const defaultTimeout = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? 8000 : 60000;
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || defaultTimeout);
 
   const config = {
     ...options,

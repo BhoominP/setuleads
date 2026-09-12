@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { harvestPasteLeads } from '@/api/leadsApi';
+import { getLocalLeads, saveLocalLeads } from '@/hooks/useLeads';
+import type { Lead } from '@/types/lead';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { LocationInput } from './LocationInput';
 import { Label } from '@/components/ui/label';
 import {
   X,
@@ -21,6 +23,7 @@ import {
 interface SmartClipboardHarvesterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultLocation?: string;
 }
 
 interface ExtractedItem {
@@ -116,14 +119,41 @@ function cleanBusinessName(
   return name;
 }
 
-export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboardHarvesterModalProps) {
+export function SmartClipboardHarvesterModal({
+  isOpen,
+  onClose,
+  defaultLocation = 'Vadodara, Gujarat',
+}: SmartClipboardHarvesterModalProps) {
   const queryClient = useQueryClient();
   const [rawText, setRawText] = useState('');
-  const [location, setLocation] = useState('Vadodara, Gujarat');
+  const [location, setLocation] = useState(defaultLocation);
   const [isImporting, setIsImporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState<number | null>(null);
   const [unselectedSet, setUnselectedSet] = useState<Set<string>>(new Set());
+
+  // Dynamically update location whenever defaultLocation changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocation(defaultLocation || 'Vadodara, Gujarat');
+    }
+  }, [isOpen, defaultLocation]);
+
+  // Dynamically detect location signal from raw pasted text if present
+  useEffect(() => {
+    if (!rawText.trim()) return;
+    const locMatch = rawText.match(/(?:-\s*|location:\s*|in\s+)([A-Z][a-zA-Z\s]{2,25}(?:,\s*[A-Z][a-zA-Z\s]{2,20})?)/i);
+    if (locMatch && locMatch[1]) {
+      const detected = locMatch[1].trim();
+      if (
+        detected.length >= 3 &&
+        !JUNK_PHRASES.some((j) => detected.toLowerCase().includes(j)) &&
+        !detected.toLowerCase().startsWith('http')
+      ) {
+        setLocation(detected);
+      }
+    }
+  }, [rawText]);
 
   const parsedItems = useMemo(() => {
     if (!rawText.trim()) return [];
@@ -248,12 +278,83 @@ export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboard
         location: location || 'Vadodara, Gujarat',
       }));
 
-      const created = await harvestPasteLeads({
-        location: location || 'Vadodara, Gujarat',
-        parsedCandidates: candidatesPayload,
+      // Construct local fallback Lead objects
+      const fallbackLeads: Lead[] = selectedItems.map((item) => {
+        let cleanName = item.businessName && item.businessName.trim() ? item.businessName.trim() : '';
+        if (!cleanName || cleanName.startsWith('@') || cleanName.toLowerCase().includes('@gmail')) {
+          if (item.email && item.email.includes('@')) {
+            const part = item.email.split('@')[0].replace(/[._]/g, ' ').trim();
+            cleanName = part ? part.charAt(0).toUpperCase() + part.slice(1) : 'Social Prospect';
+          } else {
+            cleanName = 'Social Prospect';
+          }
+        }
+
+        const website = item.websiteUrl || item.linktreeUrl || (item.instagramHandle ? `https://instagram.com/${item.instagramHandle.replace('@', '')}` : null);
+
+        const notesParts = ['Harvested via Smart Web Clipboard.'];
+        if (item.instagramHandle) notesParts.push(`IG: ${item.instagramHandle}`);
+        if (item.linkedinUrl) notesParts.push(`LinkedIn: ${item.linkedinUrl}`);
+        if (item.linktreeUrl) notesParts.push(`Linktree: ${item.linktreeUrl}`);
+
+        return {
+          id: `lead_clip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          business_name: cleanName,
+          contact_name: null,
+          email: item.email || null,
+          phone: item.phone || null,
+          website_url: website,
+          source: 'social_xray',
+          source_query: 'Smart Web Clipboard',
+          location: location || 'Vadodara, Gujarat',
+          stage: 'new',
+          estimated_value: null,
+          website_notes: null,
+          general_notes: notesParts.join(' '),
+          website_score: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_contacted_at: null,
+          geoapify_place_id: null,
+          google_place_id: null,
+          osm_type: null,
+          osm_id: null,
+          overture_id: null,
+          discovery_area: location || 'Vadodara, Gujarat',
+        };
       });
 
-      const count = created?.length || selectedItems.length;
+      let count = selectedItems.length;
+
+      try {
+        const created = await harvestPasteLeads({
+          location: location || 'Vadodara, Gujarat',
+          parsedCandidates: candidatesPayload,
+        });
+        if (Array.isArray(created) && created.length > 0) {
+          count = created.length;
+        }
+      } catch (apiErr) {
+        console.warn('Spring Boot harvestPasteLeads API unreachable/failed, persisting candidates to local storage fallback:', apiErr);
+      }
+
+      // Always save candidates into local storage fallback so they appear immediately in live web app & offline mode
+      const currentLocal = getLocalLeads();
+      const merged = [...currentLocal];
+      for (const fb of fallbackLeads) {
+        const isDup = merged.some(
+          (m) =>
+            m.id === fb.id ||
+            (fb.email && m.email?.toLowerCase() === fb.email.toLowerCase()) ||
+            (fb.website_url && m.website_url?.toLowerCase() === fb.website_url.toLowerCase()) ||
+            (fb.business_name && m.business_name?.toLowerCase() === fb.business_name.toLowerCase())
+        );
+        if (!isDup) {
+          merged.unshift(fb);
+        }
+      }
+      saveLocalLeads(merged);
+
       setSuccessCount(count);
 
       await queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -340,12 +441,11 @@ export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboard
               <Label className="font-mono text-[11px] uppercase tracking-wider block font-bold mb-1" style={{ color: '#FF4A00' }}>
                 TARGET LOCATION
               </Label>
-              <Input
+              <LocationInput
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Vadodara, Gujarat"
+                onChange={(val) => setLocation(val)}
+                placeholder="e.g. Vadodara, Gujarat or Los Angeles"
                 className="bg-[#080808] border-[#333333] text-xs font-mono focus:border-[#FF4A00]"
-                style={{ color: '#F4F0E8', backgroundColor: '#080808' }}
               />
             </div>
 

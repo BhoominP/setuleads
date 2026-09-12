@@ -659,6 +659,7 @@ export function LeadSourceSearch() {
       <SmartClipboardHarvesterModal
         isOpen={isClipboardModalOpen}
         onClose={() => setIsClipboardModalOpen(false)}
+        defaultLocation={location}
       />
     </div>
   );

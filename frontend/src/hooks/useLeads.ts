@@ -14,9 +14,9 @@ export interface UseLeadsFilters {
   source?: string;
 }
 
-const LOCAL_LEADS_KEY = 'setuleads_leads_fallback';
+export const LOCAL_LEADS_KEY = 'setuleads_leads_fallback';
 
-function getLocalLeads(): Lead[] {
+export function getLocalLeads(): Lead[] {
   try {
     const raw = localStorage.getItem(LOCAL_LEADS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -25,7 +25,7 @@ function getLocalLeads(): Lead[] {
   }
 }
 
-function saveLocalLeads(items: Lead[]) {
+export function saveLocalLeads(items: Lead[]) {
   try {
     localStorage.setItem(LOCAL_LEADS_KEY, JSON.stringify(items));
   } catch (e) {
