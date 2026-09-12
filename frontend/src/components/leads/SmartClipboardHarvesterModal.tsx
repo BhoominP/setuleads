@@ -4,7 +4,19 @@ import { harvestPasteLeads } from '@/api/leadsApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X, ClipboardText, Plus, Envelope, Phone, Globe, InstagramLogo, CheckCircle } from '@phosphor-icons/react';
+import {
+  X,
+  ClipboardText,
+  Plus,
+  Envelope,
+  Phone,
+  Globe,
+  InstagramLogo,
+  CheckCircle,
+  WarningOctagon,
+  CheckSquare,
+  Square,
+} from '@phosphor-icons/react';
 
 interface SmartClipboardHarvesterModalProps {
   isOpen: boolean;
@@ -20,22 +32,98 @@ interface ExtractedItem {
   instagramHandle: string | null;
   linkedinUrl: string | null;
   linktreeUrl: string | null;
-  selected: boolean;
 }
 
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}/gi;
 const PHONE_REGEX = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3,5}\)?[-.\s]?\d{3,5}[-.\s]?\d{3,5}/g;
-const INSTA_REGEX = /(?:instagram\.com\/|@)([a-zA-Z0-9._]{3,30})/gi;
+const INSTA_REGEX = /(?:https?:\/\/(?:www\.)?instagram\.com\/|(?:^|[^a-zA-Z0-9._%+-])@)([a-zA-Z0-9._]{3,30})(?![a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
 const LINKEDIN_REGEX = /(https?:\/\/(?:www\.)?linkedin\.com\/(?:in|company)\/[a-zA-Z0-9_-]+)/gi;
 const LINKTREE_REGEX = /(https?:\/\/(?:www\.)?linktr\.ee\/[a-zA-Z0-9_-]+)/gi;
 const URL_REGEX = /https?:\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s"'<>]*)?/gi;
+
+const JUNK_PHRASES = [
+  'skip to main content',
+  'accessibility help',
+  'try without personalisation',
+  'based on your past activity',
+  'update location',
+  'send feedback',
+  'privacy',
+  'terms',
+  'about google',
+  'google search',
+  'search results',
+  'help',
+];
+
+const IGNORED_IG_HANDLES = new Set([
+  'com',
+  'p',
+  'reels',
+  'gmail',
+  'yahoo',
+  'hotmail',
+  'outlook',
+  'icloud',
+  'gmail.com',
+  'yahoo.com',
+  'email',
+  'contact',
+]);
+
+function cleanBusinessName(
+  line: string,
+  email: string | null,
+  insta: string | null,
+  website: string | null,
+  idx: number
+): string {
+  let name = line
+    .replace(/^\d+[\.\)]\s*/, '')
+    .replace(/^(?:instagram|linkedin|facebook|twitter|x)\s*[·\-\|]\s*/i, '')
+    .replace(/\(@[a-zA-Z0-9._]+\)/g, '')
+    .split(/\s*[\-\|·]\s*/)[0]
+    .trim();
+
+  const lower = name.toLowerCase();
+  const isJunk =
+    JUNK_PHRASES.some((j) => lower.includes(j)) ||
+    lower.startsWith('@') ||
+    lower.includes('@gmail.com') ||
+    lower.includes('@yahoo');
+
+  if (isJunk || name.length < 2 || name.length > 70 || lower.startsWith('http')) {
+    if (insta && !insta.toLowerCase().includes('gmail')) {
+      name = insta
+        .replace(/^@/, '')
+        .replace(/[._]/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    } else if (email && email.includes('@')) {
+      const uname = email.split('@')[0].replace(/[._-]/g, ' ');
+      name = uname.replace(/\b\w/g, (c) => c.toUpperCase());
+    } else if (website) {
+      try {
+        const host = new URL(website).hostname.replace(/^www\./, '').split('.')[0];
+        name = host.replace(/\b\w/g, (c) => c.toUpperCase());
+      } catch {
+        name = `Prospect Candidate #${idx + 1}`;
+      }
+    } else {
+      name = `Prospect Candidate #${idx + 1}`;
+    }
+  }
+
+  return name;
+}
 
 export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboardHarvesterModalProps) {
   const queryClient = useQueryClient();
   const [rawText, setRawText] = useState('');
   const [location, setLocation] = useState('Vadodara, Gujarat');
   const [isImporting, setIsImporting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState<number | null>(null);
+  const [unselectedSet, setUnselectedSet] = useState<Set<string>>(new Set());
 
   const parsedItems = useMemo(() => {
     if (!rawText.trim()) return [];
@@ -47,37 +135,60 @@ export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboard
       const trimmed = block.trim();
       if (trimmed.length < 15) return;
 
+      const lowerBlock = trimmed.toLowerCase();
+      if (
+        JUNK_PHRASES.some((j) => lowerBlock.includes(j)) &&
+        !trimmed.includes('@') &&
+        !trimmed.includes('http')
+      ) {
+        return;
+      }
+
       const emails = trimmed.match(EMAIL_REGEX);
       const phones = trimmed.match(PHONE_REGEX);
-      const instas = Array.from(trimmed.matchAll(INSTA_REGEX), m => m[1]);
+
+      const instas: string[] = [];
+      let match;
+      const instaRegexCopy = new RegExp(INSTA_REGEX.source, 'gi');
+      while ((match = instaRegexCopy.exec(trimmed)) !== null) {
+        const handle = match[1];
+        if (handle && !IGNORED_IG_HANDLES.has(handle.toLowerCase())) {
+          instas.push(handle);
+        }
+      }
+
       const linkedin = trimmed.match(LINKEDIN_REGEX);
       const linktree = trimmed.match(LINKTREE_REGEX);
       const urls = trimmed.match(URL_REGEX);
 
-      let email = emails ? emails[0].toLowerCase() : null;
-      let phone = phones ? phones.find(p => p.replace(/[^0-9+]/g, '').length >= 10) || null : null;
-      let instagramHandle = instas.length > 0 && !['com', 'p', 'reels'].includes(instas[0].toLowerCase()) ? `@${instas[0]}` : null;
-      let linkedinUrl = linkedin ? linkedin[0] : null;
-      let linktreeUrl = linktree ? linktree[0] : null;
+      const email = emails ? emails[0].toLowerCase() : null;
+      const phone = phones ? phones.find((p) => p.replace(/[^0-9+]/g, '').length >= 10) || null : null;
+      const instagramHandle = instas.length > 0 ? `@${instas[0]}` : null;
+      const linkedinUrl = linkedin ? linkedin[0] : null;
+      const linktreeUrl = linktree ? linktree[0] : null;
 
-      let websiteUrl = null;
+      let websiteUrl: string | null = null;
       if (urls) {
-        const customUrl = urls.find(u => {
+        const customUrl = urls.find((u) => {
           const l = u.toLowerCase();
-          return !l.includes('instagram.com') && !l.includes('facebook.com') && !l.includes('linkedin.com') && !l.includes('google.com') && !l.includes('twitter.com') && !l.includes('x.com');
+          return (
+            !l.includes('instagram.com') &&
+            !l.includes('facebook.com') &&
+            !l.includes('linkedin.com') &&
+            !l.includes('google.com') &&
+            !l.includes('twitter.com') &&
+            !l.includes('x.com')
+          );
         });
         if (customUrl) websiteUrl = customUrl;
       }
 
-      // Name Heuristic
-      const firstLine = trimmed.split('\n')[0].replace(/^\d+\.\s*/, '').split('-')[0].split('|')[0].trim();
-      let businessName = firstLine.length >= 3 && firstLine.length <= 60 && !firstLine.toLowerCase().startsWith('http')
-        ? firstLine
-        : (instagramHandle || (email ? email.split('@')[0] : `Social Lead #${idx + 1}`));
+      const firstLine = trimmed.split('\n')[0];
+      const businessName = cleanBusinessName(firstLine, email, instagramHandle, websiteUrl, idx);
 
       if (email || phone || websiteUrl || instagramHandle || linkedinUrl || linktreeUrl) {
         items.push({
-          id: `item_${idx}`,
+          id: `item_${idx}_${businessName.substring(0, 10)}`,
           businessName,
           email,
           phone,
@@ -85,7 +196,6 @@ export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboard
           instagramHandle,
           linkedinUrl,
           linktreeUrl,
-          selected: true,
         });
       }
     });
@@ -93,44 +203,68 @@ export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboard
     return items;
   }, [rawText]);
 
-  const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({});
+  const selectedItems = useMemo(() => {
+    return parsedItems.filter((i) => !unselectedSet.has(i.id));
+  }, [parsedItems, unselectedSet]);
 
   function toggleItem(id: string) {
-    setSelectedMap(prev => ({
-      ...prev,
-      [id]: prev[id] !== undefined ? !prev[id] : false,
-    }));
+    setUnselectedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function handleSelectAll() {
+    setUnselectedSet(new Set());
+  }
+
+  function handleDeselectAll() {
+    setUnselectedSet(new Set(parsedItems.map((i) => i.id)));
   }
 
   async function handleImport() {
-    const toImport = parsedItems.filter(item => selectedMap[item.id] !== false);
-    if (toImport.length === 0) return;
+    if (selectedItems.length === 0) return;
 
     setIsImporting(true);
+    setErrorMessage(null);
+
     try {
+      const candidatesPayload = selectedItems.map((item) => ({
+        businessName: item.businessName && item.businessName.trim() ? item.businessName.trim() : 'Social Prospect',
+        email: item.email || null,
+        phone: item.phone || null,
+        websiteUrl: item.websiteUrl || null,
+        instagramHandle: item.instagramHandle || null,
+        linkedinUrl: item.linkedinUrl || null,
+        linktreeUrl: item.linktreeUrl || null,
+        location: location || 'Vadodara, Gujarat',
+      }));
+
       const created = await harvestPasteLeads({
-        location,
-        parsedCandidates: toImport.map(item => ({
-          businessName: item.businessName,
-          email: item.email,
-          phone: item.phone,
-          websiteUrl: item.websiteUrl,
-          instagramHandle: item.instagramHandle,
-          linkedinUrl: item.linkedinUrl,
-          linktreeUrl: item.linktreeUrl,
-          location,
-        })),
+        location: location || 'Vadodara, Gujarat',
+        parsedCandidates: candidatesPayload,
       });
 
-      setSuccessCount(created?.length || toImport.length);
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      const count = created?.length || selectedItems.length;
+      setSuccessCount(count);
+
+      await queryClient.invalidateQueries({ queryKey: ['leads'] });
+      await queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+
       setTimeout(() => {
         setSuccessCount(null);
         setRawText('');
+        setUnselectedSet(new Set());
         onClose();
-      }, 1500);
-    } catch (err) {
-      console.error('Failed to import clipboard candidates', err);
+      }, 1400);
+    } catch (err: any) {
+      console.error('Failed to import clipboard candidates:', err);
+      setErrorMessage(err.message || 'Failed to import candidates to CRM. Please verify connection.');
     } finally {
       setIsImporting(false);
     }
@@ -139,131 +273,177 @@ export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboard
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/85 backdrop-blur-xs p-4">
-      <div className="inspected-panel bg-panel border border-border p-6 w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col">
-        {/* Header */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#080808]/90 backdrop-blur-sm p-4">
+      <div className="inspected-panel bg-[#101010] border border-[#222222] p-6 w-full max-w-3xl shadow-2xl relative max-h-[92vh] flex flex-col group">
+        {/* Subtle radial light */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#FF4A00]/5 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Close Button */}
         <button
+          type="button"
           onClick={onClose}
           disabled={isImporting}
-          className="absolute top-4 right-4 text-muted-foreground hover:text-ink disabled:opacity-30"
+          className="absolute top-4 right-4 text-[#8E8982] hover:text-[#F4F0E8] disabled:opacity-30 p-1 cursor-pointer"
         >
-          <X size={18} />
+          <X size={20} style={{ color: '#F4F0E8' }} />
         </button>
 
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-7 h-7 border border-rust text-rust flex items-center justify-center bg-rust/10 font-mono text-xs">
-            <ClipboardText size={16} />
+        {/* Header Title with High-Contrast Forced Light Color */}
+        <div className="flex items-center gap-3 mb-3 border-b border-[#222222] pb-4">
+          <div className="w-9 h-9 border border-[#FF4A00] text-[#FF4A00] flex items-center justify-center bg-[#FF4A00]/10 font-mono text-xs font-bold shrink-0">
+            <ClipboardText size={20} style={{ color: '#FF4A00' }} />
           </div>
           <div>
-            <h2 className="font-mono text-sm font-bold text-ink uppercase tracking-wider">
-              Smart Web Clipboard & Social Harvester
+            <h2 className="font-mono text-sm md:text-base font-bold uppercase tracking-wider" style={{ color: '#F4F0E8' }}>
+              <span style={{ color: '#FF4A00' }}>SMART WEB CLIPBOARD</span> & CANDIDATE HARVESTER
             </h2>
-            <p className="font-sans text-xs text-muted-foreground">
-              Paste raw Google search results, Instagram profiles, LinkedIn pages, or Linktree bios to parse leads.
+            <p className="font-mono text-xs mt-0.5" style={{ color: '#A09B93' }}>
+              Paste raw search engine results, Instagram/LinkedIn profiles, or Linktree bios to extract CRM leads.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
-          <div className="md:col-span-2">
-            <Label className="font-mono text-[10px] uppercase text-muted-foreground mb-1 block">
-              Paste Copied Web / Social Text
+        {/* Error Alert Banner */}
+        {errorMessage && (
+          <div className="mb-4 p-3 bg-[#7F1D1D]/40 border border-[#7F1D1D] font-mono text-xs flex items-center gap-2" style={{ color: '#F4F0E8' }}>
+            <WarningOctagon size={16} className="shrink-0" style={{ color: '#FF4A00' }} />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-2">
+          {/* Raw Text Input */}
+          <div className="md:col-span-2 space-y-1.5">
+            <Label className="font-mono text-[11px] uppercase tracking-wider block font-bold" style={{ color: '#FF4A00' }}>
+              PASTE COPIED WEB / SOCIAL TEXT
             </Label>
             <textarea
               value={rawText}
-              onChange={e => setRawText(e.target.value)}
-              placeholder={`Paste copied text here, e.g.:\n1. Acme Clothing (@acme_style) - Los Angeles\nContact: hello@acmeclothing.com | +1 213 555 0199\nWebsite: https://acmeclothing.com\n\n2. Sweet Treats Bakery - Vadodara\nEmail: sweettreats@gmail.com | Linktree: linktr.ee/sweettreats`}
+              onChange={(e) => {
+                setRawText(e.target.value);
+                setErrorMessage(null);
+              }}
+              spellCheck={false}
+              placeholder={`Paste copied web text here, e.g.:\n\n1. Acme Web Studio (@acmestudio) - Surat, Gujarat\nContact: hello@acmeweb.com | +91 98765 43210\nWebsite: https://acmeweb.com\n\n2. Creative Bakers - Vadodara\nEmail: contact@creativebakers.in | Linktree: linktr.ee/creativebakers`}
               rows={6}
-              className="w-full bg-base border border-border p-3 text-xs font-mono text-ink placeholder:text-muted-foreground focus:outline-hidden focus:border-rust"
+              className="w-full bg-[#080808] border border-[#333333] p-3 text-xs font-mono placeholder:text-[#666666] focus:outline-none focus:border-[#FF4A00] leading-relaxed resize-none"
+              style={{ color: '#F4F0E8', backgroundColor: '#080808' }}
             />
           </div>
 
-          <div>
-            <Label className="font-mono text-[10px] uppercase text-muted-foreground mb-1 block">
-              Default Target Location
-            </Label>
-            <Input
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              placeholder="e.g. Vadodara, Gujarat or Los Angeles"
-              className="bg-base border-border text-xs font-mono mb-3"
-            />
+          {/* Location & Parser Info */}
+          <div className="space-y-3">
+            <div>
+              <Label className="font-mono text-[11px] uppercase tracking-wider block font-bold mb-1" style={{ color: '#FF4A00' }}>
+                TARGET LOCATION
+              </Label>
+              <Input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. Vadodara, Gujarat"
+                className="bg-[#080808] border-[#333333] text-xs font-mono focus:border-[#FF4A00]"
+                style={{ color: '#F4F0E8', backgroundColor: '#080808' }}
+              />
+            </div>
 
-            <div className="bg-base/70 border border-border p-3 text-[11px] font-mono text-muted-foreground space-y-1">
-              <p className="font-bold text-ink uppercase mb-1">Parser Highlights:</p>
+            <div className="bg-[#080808] border border-[#222222] p-3 text-[11px] font-mono space-y-1.5" style={{ color: '#A09B93' }}>
+              <p className="font-bold uppercase tracking-wider text-[10px] mb-1" style={{ color: '#F4F0E8' }}>PARSER ENGINE:</p>
 
-              <div className="flex items-center gap-1.5 text-rust">
-                <Envelope size={12} />
-                <span>Auto Email Regex (@gmail/@domain)</span>
+              <div className="flex items-center gap-2" style={{ color: '#FF4A00' }}>
+                <Envelope size={13} />
+                <span>Email Regex (@domain)</span>
               </div>
-              <div className="flex items-center gap-1.5 text-sage">
-                <Phone size={12} />
-                <span>Phone / WhatsApp Numbers</span>
+              <div className="flex items-center gap-2" style={{ color: '#00E599' }}>
+                <Phone size={13} />
+                <span>Phone / WhatsApp</span>
               </div>
-              <div className="flex items-center gap-1.5 text-ochre">
-                <InstagramLogo size={12} />
-                <span>Instagram & Linktree Handles</span>
+              <div className="flex items-center gap-2" style={{ color: '#FFB800' }}>
+                <InstagramLogo size={13} />
+                <span>IG / Linktree Handles</span>
               </div>
-              <div className="flex items-center gap-1.5 text-rust">
-                <Globe size={12} />
+              <div className="flex items-center gap-2" style={{ color: '#F4F0E8' }}>
+                <Globe size={13} />
                 <span>Direct Website URLs</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Parsed Prospects Preview */}
-        <div className="flex-1 overflow-y-auto min-h-[150px] border border-border/80 bg-base/50 p-3 mb-4 space-y-2">
-          <div className="flex items-center justify-between border-b border-border/60 pb-2">
-            <span className="font-mono text-xs uppercase text-muted-foreground font-semibold">
-              Parsed Prospect Candidates ({parsedItems.filter(i => selectedMap[i.id] !== false).length} / {parsedItems.length})
+        {/* Parsed Prospects Section */}
+        <div className="flex-1 overflow-y-auto min-h-[180px] max-h-[260px] border border-[#222222] bg-[#080808] p-3 my-3 space-y-2">
+          <div className="flex items-center justify-between border-b border-[#222222] pb-2 sticky top-0 bg-[#080808] z-10">
+            <span className="font-mono text-xs uppercase font-bold tracking-wider" style={{ color: '#F4F0E8' }}>
+              PARSED PROSPECT CANDIDATES ({selectedItems.length} / {parsedItems.length})
             </span>
+
+            {parsedItems.length > 0 && (
+              <div className="flex items-center gap-3 font-mono text-[10px]">
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="hover:underline uppercase tracking-wider font-bold cursor-pointer"
+                  style={{ color: '#FF4A00' }}
+                >
+                  Select All
+                </button>
+                <span style={{ color: '#333333' }}>|</span>
+                <button
+                  type="button"
+                  onClick={handleDeselectAll}
+                  className="hover:text-white uppercase tracking-wider cursor-pointer"
+                  style={{ color: '#A09B93' }}
+                >
+                  Deselect All
+                </button>
+              </div>
+            )}
           </div>
 
           {parsedItems.length === 0 ? (
-            <div className="py-8 text-center text-xs font-mono text-muted-foreground italic">
-              Paste raw search results or social text above to preview identified candidates.
+            <div className="py-10 text-center text-xs font-mono italic" style={{ color: '#8E8982' }}>
+              Paste raw search results or social text above to preview parsed candidates.
             </div>
           ) : (
-            parsedItems.map(item => {
-              const isChecked = selectedMap[item.id] !== false;
+            parsedItems.map((item) => {
+              const isSelected = !unselectedSet.has(item.id);
               return (
                 <div
                   key={item.id}
                   onClick={() => toggleItem(item.id)}
-                  className={`p-2.5 border transition-colors cursor-pointer flex items-center justify-between ${
-                    isChecked ? 'border-rust/40 bg-rust/5' : 'border-border/60 bg-panel opacity-60'
+                  className={`p-3 border transition-all cursor-pointer flex items-center justify-between ${
+                    isSelected
+                      ? 'border-[#FF4A00]/60 bg-[#151515]'
+                      : 'border-[#222222] bg-[#080808] opacity-50 hover:opacity-75'
                   }`}
                 >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {}}
-                        className="accent-rust shrink-0"
-                      />
-                      <span className="font-mono text-xs font-bold text-ink">{item.businessName}</span>
+                  <div className="space-y-1.5 w-full">
+                    <div className="flex items-center gap-2.5">
+                      <button type="button" style={{ color: '#FF4A00' }}>
+                        {isSelected ? <CheckSquare size={16} weight="fill" /> : <Square size={16} style={{ color: '#8E8982' }} />}
+                      </button>
+                      <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color: '#F4F0E8' }}>
+                        {item.businessName}
+                      </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-muted-foreground pl-5">
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono pl-6" style={{ color: '#A09B93' }}>
                       {item.email && (
-                        <span className="flex items-center gap-1 text-rust">
+                        <span className="flex items-center gap-1 bg-[#FF4A00]/10 px-1.5 py-0.5 border border-[#FF4A00]/20" style={{ color: '#FF4A00' }}>
                           <Envelope size={11} /> {item.email}
                         </span>
                       )}
                       {item.phone && (
-                        <span className="flex items-center gap-1 text-sage">
+                        <span className="flex items-center gap-1 bg-[#00E599]/10 px-1.5 py-0.5 border border-[#00E599]/20" style={{ color: '#00E599' }}>
                           <Phone size={11} /> {item.phone}
                         </span>
                       )}
                       {item.instagramHandle && (
-                        <span className="flex items-center gap-1 text-ochre">
+                        <span className="flex items-center gap-1 bg-[#FFB800]/10 px-1.5 py-0.5 border border-[#FFB800]/20" style={{ color: '#FFB800' }}>
                           <InstagramLogo size={11} /> {item.instagramHandle}
                         </span>
                       )}
                       {item.websiteUrl && (
-                        <span className="flex items-center gap-1 text-rust underline truncate max-w-[200px]">
+                        <span className="flex items-center gap-1 underline truncate max-w-[220px]" style={{ color: '#F4F0E8' }}>
                           <Globe size={11} /> {item.websiteUrl}
                         </span>
                       )}
@@ -276,29 +456,39 @@ export function SmartClipboardHarvesterModal({ isOpen, onClose }: SmartClipboard
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-border">
-          <span className="font-mono text-xs text-muted-foreground">
+        <div className="flex items-center justify-between pt-3 border-t border-[#222222]">
+          <span className="font-mono text-xs" style={{ color: '#CFC8BE' }}>
             {successCount !== null ? (
-              <span className="text-sage flex items-center gap-1 font-bold">
-                <CheckCircle size={14} /> Imported {successCount} prospects into CRM!
+              <span className="flex items-center gap-1.5 font-bold animate-pulse" style={{ color: '#00E599' }}>
+                <CheckCircle size={15} /> Successfully imported {successCount} candidates into CRM!
               </span>
             ) : (
-              `Ready to import ${parsedItems.filter(i => selectedMap[i.id] !== false).length} leads`
+              `Ready to import ${selectedItems.length} leads`
             )}
           </span>
 
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={onClose} disabled={isImporting}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onClose}
+              disabled={isImporting}
+              className="font-mono text-xs border-[#333333] hover:bg-[#222222]"
+              style={{ color: '#F4F0E8' }}
+            >
               Cancel
             </Button>
             <Button
+              type="button"
               size="sm"
               onClick={handleImport}
-              disabled={isImporting || parsedItems.filter(i => selectedMap[i.id] !== false).length === 0}
-              className="bg-rust hover:bg-rust/90 text-panel font-mono text-xs flex items-center gap-1.5"
+              disabled={isImporting || selectedItems.length === 0}
+              className="bg-[#FF4A00] hover:bg-[#FF5A00] font-mono text-xs font-bold flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,74,0,0.25)] disabled:opacity-40"
+              style={{ color: '#F4F0E8' }}
             >
-              <Plus size={14} />
-              {isImporting ? 'Importing…' : 'Import Candidates to CRM'}
+              <Plus size={14} style={{ color: '#F4F0E8' }} />
+              {isImporting ? 'Importing to CRM...' : 'Import Candidates to CRM'}
             </Button>
           </div>
         </div>

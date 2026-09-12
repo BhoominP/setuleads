@@ -67,19 +67,214 @@ SetuLeads uses a multi-source model rather than relying on a single provider dir
 
 *Why this exists*: Map directories work well for physical storefronts, but early-stage businesses, creative agencies, and digital-first services often build a social or Linktree presence long before setting up a map listing or traditional website.
 
-### Smart Text Harvester
-- Endpoint: `POST /api/v1/leads/harvest-paste`
+─────────────────────────────────────────────
 
-Allows unstructured text copied from directory lists, search result pages, or social profiles to be pasted directly into SetuLeads.
+## 03.1  SOCIAL X-RAY DISCOVERY
 
-The backend parses text streams to extract:
-- Business name
-- Email addresses
-- Phone numbers & WhatsApp handles
-- Instagram & LinkedIn URLs
-- Website domains
+Not every business starts with a website or a map listing.
 
-Extracted candidates are presented in a preview modal where candidates can be validated before importing into the CRM.
+Some businesses live on Instagram.  
+Some exist primarily through LinkedIn.  
+Some use Linktree as their entire digital presence.  
+
+Social X-Ray gives SetuLeads another way to find them.
+
+Social X-Ray is an advanced search technique using search-engine operators and targeted keywords to discover publicly indexed pages on specific domains.
+
+### Terminology
+
+- **X-Ray Search**: A targeted search technique that searches within a specific website/domain using search operators and contextual keywords.
+- **Search Operators**: Special instructions such as `site:` that restrict where search results come from.
+- **Exact-match terms**: Quoted phrases such as `"startup"` or `"Los Angeles"` that help constrain the search context.
+
+### Example Query Breakdown
+
+```
+site:instagram.com "startup" "Los Angeles" "@gmail.com"
+```
+
+- `site:instagram.com` → Search only pages indexed from Instagram.
+- `"startup"` → Search for the target business/category.
+- `"Los Angeles"` → Add geographic context.
+- `"@gmail.com"` → Look for pages/snippets containing a common public contact pattern.
+
+> **Engineering Note**: Search engine indexing can be incomplete or stale, and search engines only expose publicly indexed content. Social X-Ray is therefore designed as a candidate discovery and evidence layer, not a guaranteed extraction or complete coverage claim.
+
+---
+
+### WHY MAP SEARCH IS NOT ENOUGH
+
+Traditional place/business discovery is useful for physical storefronts, but it can miss:
+
+- Early-stage startups
+- Creators and agencies
+- Digital-first businesses
+- Freelancers
+- Small businesses operating primarily through social media
+- Businesses using Linktree instead of a traditional website
+- Businesses with weak or incomplete directory presence
+
+```
+MAP SEARCH
+    │
+    ▼
+Physical businesses ──► Business listings ──► Known locations
+
+vs.
+
+SOCIAL X-RAY
+    │
+    ▼
+Indexed public profiles ──► Digital-first businesses ──► Social/contact signals
+```
+
+SetuLeads combines map POI search (Geoapify, OpenStreetMap) with Social X-Ray rather than replacing one with the other.
+
+---
+
+### HOW AN X-RAY QUERY WORKS
+
+```
+┌────────────────────┐   ┌───────────┐   ┌────────────────┐   ┌───────────────┐
+│ site:instagram.com │ + │ "startup" │ + │ "Los Angeles"  │ + │ "@gmail.com"  │
+└────────────────────┘   └───────────┘   └────────────────┘   └───────────────┘
+     DOMAIN TARGET        INTENT TERM     LOCATION SIGNAL      CONTACT SIGNAL
+```
+
+- **Domain Target** (`site:instagram.com`): Restricts search results to indexed pages on the specified domain.
+- **Intent Term** (`"startup"`): Defines what kind of prospect or category we are searching for.
+- **Location Signal** (`"Los Angeles"`): Constrains results to a target region or city.
+- **Contact Signal** (`"@gmail.com"`): Surfaces pages containing public email patterns or outreach handles.
+
+---
+
+### QUERY → RESULT PIPELINE
+
+```
+USER INTENT
+     │
+     ▼
+QUERY BUILDER ─────────────── [QUERY BUILT]
+     │
+     ▼
+SEARCH ENGINE INDEX ───────── [SEARCHING INDEX]
+     │
+     ▼
+INDEXED PUBLIC RESULTS ────── [RESULTS FOUND]
+     │
+     ▼
+RESULT EXTRACTION ─────────── [EXTRACTING SIGNALS]
+     │
+     ▼
+NORMALIZATION ─────────────── [NORMALIZING]
+     │
+     ▼
+RELEVANCE QUALIFICATION ──── [QUALIFYING]
+     │
+     ▼
+DEDUPLICATION ─────────────── [DEDUPLICATING]
+     │
+     ▼
+SETULEADS CRM ─────────────── [READY FOR CRM]
+```
+
+---
+
+### X-RAY QUERY PATTERNS
+
+| Platform | Query Pattern Example | Target Purpose | Useful Signals | Limitations |
+| :--- | :--- | :--- | :--- | :--- |
+| **Instagram** | `site:instagram.com "startup" "Los Angeles"` | Surface creators, local boutiques, & visual services | Bio contact text, Linktree links, DMs | Dynamic JS rendering, index latency |
+| **LinkedIn** | `site:linkedin.com/company "startup" "Los Angeles"` | Discover corporate B2B services & tech startups | Employee count, official domains, tagline | Gated profile details, snippet limits |
+| **Linktree** | `site:linktr.ee "startup" "Los Angeles"` | Find micro-businesses using Linktree as sole web presence | Portfolio links, store URLs, booking links | Limited context on root linktree landing |
+| **Facebook** | `site:facebook.com "startup" "Los Angeles" "email"` | Target local service providers & community businesses | Operating hours, direct email, phone numbers | Privacy restrictions, snippet truncation |
+
+---
+
+### HOW SETULEADS USES IT
+
+```
+DISCOVERY SOURCES
+(Geoapify + OpenStreetMap + Social X-Ray + Smart Text Harvester)
+                     │
+                     ▼
+          CANDIDATE NORMALIZATION
+                     │
+                     ▼
+          RELEVANCE QUALIFICATION
+                     │
+                     ▼
+               DEDUPLICATION
+                     │
+                     ▼
+             WEBSITE INSPECTION
+                     │
+                     ▼
+                 SETULEADS CRM
+```
+
+**Core Principle**:
+```
+SEARCH RESULT ≠ QUALIFIED BUSINESS
+```
+
+Social X-Ray is a **discovery mechanism**, not the qualification system itself. A search engine result does not automatically become a qualified lead:
+
+1. **Search Results** → Raw candidates
+2. **Candidates** → Normalized schema
+3. **Normalized Candidates** → Gemini relevance checked
+4. **Relevant Candidates** → Deduplicated against CRM
+5. **Candidates with Discovered Websites** → Automated HTTP/SSL/Mobile inspection
+6. **Qualified Prospects** → Saved to CRM workstation
+
+---
+
+### SMART TEXT HARVESTER INTEGRATION
+
+> *"Search results are discovery evidence, not automatically structured CRM records."*
+
+```
+COPIED SEARCH / PAGE TEXT
+           │
+           ▼
+  SMART TEXT HARVESTER (Regex + Sanitizer)
+           │
+           ├──► Business Name
+           ├──► Email Address
+           ├──► Phone / WhatsApp
+           ├──► Website Domain
+           └──► Instagram / LinkedIn Handle
+           │
+           ▼
+   PREVIEW & VALIDATION MODAL
+           │
+           ▼
+    IMPORT TO CRM WORKSTATION
+```
+
+---
+
+### WHY X-RAY SEARCH MATTERS
+
+- **01 — DISCOVERY DIVERSITY**: Adds indexed social/digital discovery alongside traditional geospatial sources.
+- **02 — DIGITAL-FIRST COVERAGE**: Surfaces businesses operating primarily through social media or Linktree without a traditional map listing.
+- **03 — TARGETED SEARCH**: Combines domain, intent, location, and contact patterns for high-precision queries.
+- **04 — MULTI-SOURCE SIGNALS**: Complements Geoapify and OpenStreetMap candidates to build rich prospect profiles.
+- **05 — LOW-FRICTION DISCOVERY**: Adaptable across industries, geographic markets, and social platforms.
+- **06 — HUMAN-IN-THE-LOOP OPTION**: Integrates with Smart Text Harvester so users preview and validate extracted candidates before saving.
+
+---
+
+### ENGINEERING LIMITATIONS
+
+- Search engine indexing is incomplete and varies by platform.
+- Public search snippets can be stale or truncated.
+- Social profiles may represent personal accounts rather than operating businesses.
+- Similar business names across cities can produce false-positive matches.
+- Search engine ranking and indexing algorithms change dynamically.
+- Automated search queries are subject to provider terms, rate limits, and anti-bot protections.
+- Extracted contact details require human preview and semantic qualification.
+- X-Ray discovery is therefore treated as a **candidate discovery/evidence layer**, not ground truth.
 
 ─────────────────────────────────────────────
 

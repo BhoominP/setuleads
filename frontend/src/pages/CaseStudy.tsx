@@ -12,6 +12,7 @@ import {
 } from '@phosphor-icons/react';
 
 import logoMonochrome from '@/assets/SetuLeads_Monochrome.svg';
+import { SocialXRayCaseStudy } from '@/components/case-study/SocialXRayCaseStudy';
 
 interface CaseStudyProps {
   onBackToDashboard: () => void;
@@ -193,6 +194,9 @@ export function CaseStudy({ onBackToDashboard }: CaseStudyProps) {
 
       {/* Interactive Pipeline Visualizer */}
       <PipelineBeamVisual />
+
+      {/* Dedicated Social X-Ray Discovery Deep Dive Chapter */}
+      <SocialXRayCaseStudy />
 
       {/* Tech Stack Grid */}
       <div className="inspected-panel bg-[#101010] border border-[#262626] p-6 rounded-none">

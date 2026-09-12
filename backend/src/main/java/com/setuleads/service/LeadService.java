@@ -136,13 +136,28 @@ public class LeadService {
             java.util.Optional<LeadEntity> dupOpt = findExistingDuplicate(item.businessName, item.email, website);
 
             LeadEntity entity = dupOpt.orElseGet(LeadEntity::new);
-            if (entity.getBusinessName() == null) {
-                entity.setBusinessName(item.businessName != null ? item.businessName : "Social Prospect");
+            
+            String cleanName = item.businessName != null ? item.businessName.trim() : "";
+            if (cleanName.isEmpty() || cleanName.startsWith("@") || cleanName.toLowerCase().contains("@gmail")) {
+                if (item.email != null && item.email.contains("@")) {
+                    cleanName = item.email.split("@")[0].replace('.', ' ').replace('_', ' ').trim();
+                    if (!cleanName.isEmpty()) {
+                        cleanName = Character.toUpperCase(cleanName.charAt(0)) + cleanName.substring(1);
+                    } else {
+                        cleanName = "Social Prospect";
+                    }
+                } else {
+                    cleanName = "Social Prospect";
+                }
             }
-            if (item.email != null) entity.setEmail(item.email);
-            if (item.phone != null) entity.setPhone(item.phone);
-            if (website != null) entity.setWebsiteUrl(website);
-            if (entity.getLocation() == null) entity.setLocation(item.location != null ? item.location : req.getLocation());
+            entity.setBusinessName(cleanName);
+
+            if (item.email != null && !item.email.trim().isEmpty()) entity.setEmail(item.email.trim());
+            if (item.phone != null && !item.phone.trim().isEmpty()) entity.setPhone(item.phone.trim());
+            if (website != null && !website.trim().isEmpty()) entity.setWebsiteUrl(website.trim());
+            if (entity.getLocation() == null || entity.getLocation().trim().isEmpty()) {
+                entity.setLocation(item.location != null && !item.location.trim().isEmpty() ? item.location.trim() : (req.getLocation() != null ? req.getLocation().trim() : "Vadodara, Gujarat"));
+            }
             if (entity.getSource() == null) entity.setSource(LeadSource.SOCIAL_XRAY);
             if (entity.getStage() == null) entity.setStage(LeadStage.NEW);
 
