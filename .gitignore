@@ -15,9 +15,8 @@ frontend/.env.local
 node_modules
 dist
 
-# Backend Build & Target Output
+# Backend Build Output
 backend/target/
-backend/.mvn/
 backend/*.log
 
 # IDE & OS Artifacts
