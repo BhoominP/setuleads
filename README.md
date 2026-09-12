@@ -8,7 +8,7 @@ SetuLeads is a single-user prospect discovery and CRM workstation built for find
 
 ─────────────────────────────────────────────
 
-## 01 // WHAT THIS IS
+## 01  WHAT THIS IS
 
 SetuLeads started from a simple problem: finding local businesses that actually need web work takes too many browser tabs.
 
@@ -24,7 +24,7 @@ It combines local map discovery, indexed web/social discovery, automated website
 
 ─────────────────────────────────────────────
 
-## 02 // WORKFLOW ENGINE
+## 02  WORKFLOW ENGINE
 
 The core pipeline processes raw candidates through controlled normalization stages:
 
@@ -52,7 +52,7 @@ Outreach & SheetJS Excel Export
 
 ─────────────────────────────────────────────
 
-## 03 // DISCOVERY ARCHITECTURE
+## 03  DISCOVERY ARCHITECTURE
 
 SetuLeads uses a multi-source model rather than relying on a single provider directory.
 
@@ -83,7 +83,7 @@ Extracted candidates are presented in a preview modal where candidates can be va
 
 ─────────────────────────────────────────────
 
-## 04 // QUALIFICATION & ACCURACY
+## 04  QUALIFICATION & ACCURACY
 
 A core principle in SetuLeads is that a raw search result is not automatically a business:
 
@@ -111,7 +111,7 @@ This strategy prevents duplicate entries while avoiding accidental merges of sep
 
 ─────────────────────────────────────────────
 
-## 05 // WEBSITE INSPECTION
+## 05  WEBSITE INSPECTION
 
 When a website URL is discovered, SetuLeads performs an automated backend inspection to evaluate observable technical signals:
 
@@ -131,7 +131,7 @@ If an inspection fails due to server timeouts or DNS errors, the record is flagg
 
 ─────────────────────────────────────────────
 
-## 06 // CRM WORKSTATION
+## 06  CRM WORKSTATION
 
 SetuLeads is designed as a focused single-user prospecting workspace rather than an enterprise multi-tenant CRM.
 
@@ -151,7 +151,7 @@ SetuLeads is designed as a focused single-user prospecting workspace rather than
 
 ─────────────────────────────────────────────
 
-## 07 // SYSTEM ARCHITECTURE
+## 07  SYSTEM ARCHITECTURE
 
 All external API calls and provider queries originate from the Spring Boot backend. The React frontend does not expose provider API keys.
 
@@ -183,7 +183,7 @@ graph TD
 
 ─────────────────────────────────────────────
 
-## 08 // TECH STACK
+## 08  TECH STACK
 
 ### Frontend
 - **Framework**: React 19, TypeScript, Vite
@@ -205,7 +205,7 @@ graph TD
 
 ─────────────────────────────────────────────
 
-## 09 // PROJECT STRUCTURE
+## 09  PROJECT STRUCTURE
 
 ```
 setuleads/
@@ -242,7 +242,7 @@ setuleads/
 
 ─────────────────────────────────────────────
 
-## 10 // LOCAL SETUP
+## 10  LOCAL SETUP
 
 ### Prerequisites
 - Node.js v18+
@@ -288,7 +288,7 @@ The backend API server will run on `http://localhost:8080`.
 
 ─────────────────────────────────────────────
 
-## 11 // TESTING & VERIFICATION
+## 11  TESTING & VERIFICATION
 
 ### Automated Verification Commands
 
@@ -310,7 +310,7 @@ npm run test:backend
 
 ─────────────────────────────────────────────
 
-## 12 // REST API REFERENCE
+## 12  REST API REFERENCE
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
@@ -330,7 +330,7 @@ npm run test:backend
 
 ─────────────────────────────────────────────
 
-## 13 // DESIGN SYSTEM
+## 13  DESIGN SYSTEM
 
 SetuLeads utilizes a **Dark Editorial Brutalist** visual identity focused on information density, high contrast, and architectural layout boundaries.
 
@@ -357,7 +357,7 @@ SetuLeads utilizes a **Dark Editorial Brutalist** visual identity focused on inf
 
 ─────────────────────────────────────────────
 
-## 14 // CURRENT LIMITATIONS
+## 14  CURRENT LIMITATIONS
 
 - **Public Search Indexing**: Social X-Ray relies on publicly indexed web pages; results depend on engine index freshness.
 - **Candidate Filtering**: Automated relevance qualification drastically reduces noise, but edge cases can yield occasional false positives.
@@ -366,7 +366,7 @@ SetuLeads utilizes a **Dark Editorial Brutalist** visual identity focused on inf
 
 ─────────────────────────────────────────────
 
-## 15 // ROADMAP
+## 15  ROADMAP
 
 - Enhanced entity resolution for cross-referencing social profiles with local map listings.
 - Expanded technical audit rules for performance metrics and CMS detection.
