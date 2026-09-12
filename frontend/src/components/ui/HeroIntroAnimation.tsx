@@ -60,11 +60,11 @@ export function HeroIntroAnimation({ onComplete }: HeroIntroAnimationProps) {
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#151515_1px,transparent_1px),linear-gradient(to_bottom,#151515_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
 
           {/* Technical Corner Brackets */}
-          <div className="absolute top-8 left-8 font-mono text-[10px] text-[#FF4A00] tracking-widest uppercase flex items-center gap-2">
+          <div className="absolute top-6 left-6 font-mono text-[10px] text-[#FF4A00] tracking-widest uppercase flex items-center gap-2 z-20">
             <span className="w-2 h-2 bg-[#FF4A00] animate-ping rounded-full inline-block" />
-            SETULEADS ENGINE v2.4 // INITIALIZATION
+            SETULEADS ENGINE v1.1 • INITIALIZATION
           </div>
-          <div className="absolute top-8 right-8 font-mono text-[10px] text-[#A3A3A3] tracking-widest uppercase">
+          <div className="absolute top-6 right-6 font-mono text-[10px] text-[#A3A3A3] tracking-widest uppercase z-20">
             SYS.STATUS: OPERATIONAL
           </div>
 
