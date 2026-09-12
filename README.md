@@ -1,204 +1,381 @@
 <p align="center">
-  <a href="https://github.com/your-org/setuleads">
-    <img src="src/assets/Setuleads_horizontal.svg" alt="SetuLeads Logo" width="520" />
-  </a>
+  <img src="frontend/src/assets/Setuleads_horizontal.svg" alt="SetuLeads Logo" width="480" />
 </p>
 
-<h1 align="center">⚡ SETULEADS — STRUCTURAL WEB INSPECTION & PROSPECT DISCOVERY ENGINE</h1>
+# SETULEADS — STRUCTURAL WEB INSPECTION & PROSPECT DISCOVERY ENGINE
 
-<p align="center">
-  <strong>v1.1 Tactical Intelligence Bridge • Next-Gen Prospect Harvesting & CRM Workstation</strong>
-</p>
+SetuLeads is a single-user prospect discovery and CRM workstation built for finding local and digital-first businesses that need web development, website revamps, or technical digital infrastructure upgrades.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/VERSION-v1.1_RELEASE-FF4A00?style=for-the-badge&labelColor=080808" alt="Version" />
-  <img src="https://img.shields.io/badge/FRONTEND-REACT_19_%7C_TS_%7C_VITE-FF4A00?style=for-the-badge&labelColor=080808" alt="Stack" />
-  <img src="https://img.shields.io/badge/BACKEND-SPRING_BOOT_3_%7C_JAVA_17-00E599?style=for-the-badge&labelColor=080808" alt="Backend" />
-  <img src="https://img.shields.io/badge/AI_ENGINE-GEMINI_QUALIFIER-FF4A00?style=for-the-badge&labelColor=080808" alt="Engine" />
-  <img src="https://img.shields.io/badge/EXCEL_ENGINE-SHEETJS_XLSX-00E599?style=for-the-badge&labelColor=080808" alt="Export" />
-</p>
+─────────────────────────────────────────────
 
----
+## 01 // WHAT THIS IS
 
-## ─── 01 // OVERVIEW & VISION
+SetuLeads started from a simple problem: finding local businesses that actually need web work takes too many browser tabs.
 
-**SETULEADS** is a high-performance, dark-editorial, brutalist prospect discovery bridge and tactical CRM workstation. Designed for modern growth teams, agency founders, and market researchers, SetuLeads combines multi-source geospatial harvesting, AI-powered relevance qualification, interactive 2D radar territory scanning, and high-performance Excel report generation into a seamless single-pane workspace.
+Finding potential clients usually isn't the hardest part. The messy part is sifting through map markers, verifying whether a business actually has a functional website, checking basic SSL or mobile responsiveness, grabbing contact details, and organizing those prospects without drowning in a bloated enterprise CRM.
 
-> *"Turn raw web signals into qualified, actionable prospect pipelines with millisecond precision."*
+SetuLeads puts that process into one workstation interface:
 
----
+```
+FIND ──► VERIFY ──► INSPECT ──► QUALIFY ──► SAVE ──► CONTACT
+```
 
-## ─── 02 // OFFICIAL BRAND LOGO ASSETS
+It combines local map discovery, indexed web/social discovery, automated website technical checks, and a lightweight sales pipeline.
 
-SetuLeads utilizes a high-contrast brutalist design system equipped with four vector logo variants located in [`src/assets/`](file:///b:/setuleads/src/assets):
+─────────────────────────────────────────────
 
-| Brand Asset Variant | Asset Location | Visual Target & Application |
-| :--- | :--- | :--- |
-| **Horizontal Brand Logo** | [`src/assets/Setuleads_horizontal.svg`](file:///b:/setuleads/src/assets/Setuleads_horizontal.svg) | Main Workstation Navigation Bar, README Headers, and External Reports |
-| **Primary Icon Mark** | [`src/assets/Setuleads_logo.svg`](file:///b:/setuleads/src/assets/Setuleads_logo.svg) | Favicon, Compact Sidebar Badges, and Modal Headers |
-| **Monochrome Editorial Logo** | [`src/assets/SetuLeads_Monochrome.svg`](file:///b:/setuleads/src/assets/SetuLeads_Monochrome.svg) | High-Contrast Architectural Panels & Dark Mode Prints |
-| **Stacked Vertical Logo** | [`src/assets/Setuleads.svg`](file:///b:/setuleads/src/assets/Setuleads.svg) | Architecture Case Study Hero & Presentation Cards |
+## 02 // WORKFLOW ENGINE
 
----
+The core pipeline processes raw candidates through controlled normalization stages:
 
-## ─── 03 // KEY SYSTEM CAPABILITIES
+```
+Search Query
+   │
+   ▼
+Multi-Source Discovery (Geoapify / OpenStreetMap / Social X-Ray / Text Harvester)
+   │
+   ▼
+Candidate Normalization & Deduplication
+   │
+   ▼
+Gemini Relevance & Intent Qualification
+   │
+   ▼
+Backend Website Inspection (HTTP / SSL / Mobile / Tech Debt)
+   │
+   ▼
+CRM Workstation (Kanban / Inspection Drawer / Notes / Activity Log)
+   │
+   ▼
+Outreach & SheetJS Excel Export
+```
 
-### ⚡ 1. Tactical Territory Radar Scan
-- **Global Territory Coverage**: Interactive equirectangular projection spanning 10 key international regions (*India 🇮🇳, USA 🇺🇸, UK 🇬🇧, Canada 🇨🇦, Australia 🇦🇺, Germany 🇩🇪, UAE 🇦🇪, Japan 🇯🇵, France 🇫🇷, Singapore 🇸🇬*).
-- **Target Coordinate Lock**: Click any sector or famous city pill to lock target WGS84 coordinates (`Lat/Lon`), view real-time distance rings (1,000 KM & 5,000 KM), and launch localized lead discovery.
-- **De-cluttered Vector Engine**: De-cluttered tactical orange (`#FF4A00`) target nodes for selected regions with subtle background micro-dots.
+─────────────────────────────────────────────
 
-### 🛰️ 2. Multi-Source Lead Harvester
-- **Geospatial & POI Providers**: Live API extraction via Geoapify Places, OpenStreetMap (OSM), Overture Maps, and Google Places.
-- **Social & Niche Signal Extraction**: Custom Google Dorking X-Ray (LinkedIn/Twitter), Telegram Public Channels, and Internshala Fresher Feeds.
-- **Structural Web Audit**: Automated checks for site responsiveness, missing HTTPS SSL certificates, low page speeds, and technical debt indicators.
+## 03 // DISCOVERY ARCHITECTURE
 
-### 🧠 3. AI Qualification & Signal Filtering
-- **Gemini AI Engine**: Integrated Spring Boot `RelevanceQualifier` and `GeminiQualificationDTO` for strict query intent validation.
-- **Cross-Industry Exclusion**: Eliminates non-relevant leads (e.g. excluding medical/dental clinics when searching for tech software leads).
-- **Fresher & Zero-Experience Enforcement**: Dedicated logic to qualify non-senior roles and entry-level opportunities.
+SetuLeads uses a multi-source model rather than relying on a single provider directory.
 
-### 📊 4. CRM Workstation & Pipeline Management
-- **Interactive Kanban Board**: 6-stage lifecycle tracking (*New ➔ Contacted ➔ Replied ➔ Negotiating ➔ Won ➔ Lost*) with drag-and-drop workflow updates.
-- **Lead Inspection Drawer**: Detailed inspect panels for business contacts, phone/email, website audit notes, social links, and activity logs.
-- **Est. Deal Value Tracker**: Aggregated financial metrics and pipeline value estimation.
+### Local & Map POI Discovery
+- **Geoapify Places API**: Radius and spatial boundary queries for physical business locations.
+- **OpenStreetMap / Overpass API**: Open geospatial data extraction for regional categories.
 
-### 📥 5. SheetJS XLSX Export Engine
-- **One-Click Native Downloads**: High-speed client-side Excel generation formatted with human-readable headers (*Business Name, Contact Person, Email, Phone, Website, Website Score, Audit Issues, Source, Location, Stage, Est. Value, Date*).
-- **Custom Stage Filtering**: Export all stages or filter specifically by sales pipeline stage.
+*Primary use case*: Local contractors, restaurants, repair shops, professional services, and physical storefronts.
 
-### 🤖 6. Automated Harvester Daemon
-- **Autonomous Lead Scraping**: Configurable background harvest daemon running at automated intervals (every 15m, 30m, 1h, 6h, 24h) with automated local storage and database sync.
+### Digital Discovery & Social X-Ray
+- **Social X-Ray Adapter**: Query patterns targeting indexed public profiles across Instagram, LinkedIn, Linktree, and Facebook.
 
----
+*Why this exists*: Map directories work well for physical storefronts, but early-stage businesses, creative agencies, and digital-first services often build a social or Linktree presence long before setting up a map listing or traditional website.
 
-## ─── 04 // ARCHITECTURE OVERVIEW
+### Smart Text Harvester
+- Endpoint: `POST /api/v1/leads/harvest-paste`
+
+Allows unstructured text copied from directory lists, search result pages, or social profiles to be pasted directly into SetuLeads.
+
+The backend parses text streams to extract:
+- Business name
+- Email addresses
+- Phone numbers & WhatsApp handles
+- Instagram & LinkedIn URLs
+- Website domains
+
+Extracted candidates are presented in a preview modal where candidates can be validated before importing into the CRM.
+
+─────────────────────────────────────────────
+
+## 04 // QUALIFICATION & ACCURACY
+
+A core principle in SetuLeads is that a raw search result is not automatically a business:
+
+```
+SEARCH RESULT != QUALIFIED BUSINESS
+```
+
+Search engines return blog posts, articles, directory aggregators, personal profiles, and unrelated pages alongside actual businesses. Treating every search result as a lead leads to polluted databases.
+
+SetuLeads normalizes and qualifies candidates before saving them:
+
+- **Entity Type & Relevance**: Evaluates whether the candidate is a business, individual, or directory listing.
+- **Geographic Context**: Validates location markers against search intent.
+- **Quality over Volume**: 40 clean, verified candidates are far more useful than 200 unvetted links containing false positives.
+
+### Deduplication Strategy
+Candidate records are matched across incoming streams using:
+1. Provider unique identifier
+2. Normalized domain name
+3. Phone number
+4. Social handle
+5. Business name combined with geographic proximity
+
+This strategy prevents duplicate entries while avoiding accidental merges of separate businesses with similar names.
+
+─────────────────────────────────────────────
+
+## 05 // WEBSITE INSPECTION
+
+When a website URL is discovered, SetuLeads performs an automated backend inspection to evaluate observable technical signals:
+
+Endpoint: `POST /api/v1/websites/check`
+
+### Observable Checks
+- **HTTP Status Code**: Verifies site accessibility (e.g., `200 OK`, `404`, `500`).
+- **Response Latency**: Measures initial server response time.
+- **HTTPS & SSL Validity**: Checks for active SSL certificates.
+- **Viewport Tag**: Verifies presence of mobile viewport meta tags.
+- **Page Metadata**: Extracts page title and meta description.
+- **Technical Debt Signals**: Identifies outdated design structures or missing performance markers.
+
+If an inspection fails due to server timeouts or DNS errors, the record is flagged as `INSPECTION_FAILED` rather than fabricating a fake zero score.
+
+*Note*: "No website discovered" is explicitly tracked separately from "Confirmed business has no website".
+
+─────────────────────────────────────────────
+
+## 06 // CRM WORKSTATION
+
+SetuLeads is designed as a focused single-user prospecting workspace rather than an enterprise multi-tenant CRM.
+
+### Pipeline Stages
+- `NEW`: Discovered and imported candidates awaiting initial contact.
+- `CONTACTED`: First outreach sent.
+- `REPLIED`: Prospect responded.
+- `NEGOTIATING`: Proposal or audit discussion in progress.
+- `WON`: Client engaged.
+- `LOST`: Prospect declined or unsuitable.
+
+### Key Capabilities
+- **Kanban Board**: Drag-and-drop stage updates.
+- **Inspection Drawer**: Deep dive into contact details, audit notes, social links, and activity logs.
+- **Activity Log**: Endpoint `POST /api/v1/leads/{id}/activities` tracks call notes, stage updates, and email logs.
+- **Excel Export**: Endpoint `GET /api/v1/leads/export` and client-side SheetJS generate formatted `.xlsx` spreadsheets for offline review.
+
+─────────────────────────────────────────────
+
+## 07 // SYSTEM ARCHITECTURE
+
+All external API calls and provider queries originate from the Spring Boot backend. The React frontend does not expose provider API keys.
 
 ```mermaid
 graph TD
-    User([User Workstation]) <-->|HTTP / REST API| FE[React 19 + TS + Vite Frontend]
-    
+    User[User Workstation] -->|HTTP / REST| FE[React Frontend]
+
     subgraph Frontend Layer
-        FE --> Radar[Tactical Radar Scan Map]
-        FE --> Table[Leads Table & Kanban Board]
-        FE --> SheetJS[SheetJS XLSX Engine]
-        FE --> HarvesterModal[Harvest Daemon Controller]
+        FE --> Components[Radar Map / Kanban / Lead Table]
+        FE --> Harvester[Smart Text Harvester & Exporter]
     end
-    
-    subgraph Backend Layer (Spring Boot 3 / Java 17)
-        FE <-->|REST Endpoints| Controller[Discovery & Lead Controllers]
-        Controller --> Service[Discovery & Harvester Services]
-        Service --> AI[Gemini AI Relevance Qualifier]
-        Service --> GeoService[Geospatial Scraping Engine]
+
+    subgraph Backend Layer - Spring Boot 3
+        FE -->|REST API| Controllers[API Controllers]
+        Controllers --> DiscService[Discovery Service]
+        Controllers --> AuditService[Website Check Service]
+        Controllers --> LeadService[Lead & Activity Service]
+
+        DiscService --> Geoapify[Geoapify Client]
+        DiscService --> Osm[OSM / Overpass Client]
+        DiscService --> XRay[Social X-Ray Adapter]
+        DiscService --> Gemini[Gemini Relevance Qualifier]
     end
-    
-    subgraph External Data Sources
-        GeoService --> Geoapify[Geoapify Places API]
-        GeoService --> OSM[OpenStreetMap / Overpass API]
-        GeoService --> Overture[Overture Maps Foundation]
-        GeoService --> Google[Google Places API]
-        GeoService --> Dorks[Google X-Ray Dork Engine]
-    end
-    
-    subgraph Storage & Persistence
-        Service <--> DB[(PostgreSQL Database)]
-        FE <--> LocalStorage[(Local Browser Storage Fallback)]
+
+    subgraph Storage
+        LeadService --> DB[(PostgreSQL Database)]
     end
 ```
 
----
+─────────────────────────────────────────────
 
-## ─── 05 // TECH STACK & SYSTEM SPECIFICATIONS
+## 08 // TECH STACK
 
-| Layer | Technologies & Frameworks |
-| :--- | :--- |
-| **Frontend UI** | React 19, TypeScript, Vite, Tailwind CSS v4, Framer Motion, Lucide Icons, Phosphor Icons |
-| **State & Data Fetching** | TanStack Query (React Query v5), React Context API |
-| **Excel Export Engine** | SheetJS (`xlsx`) client-side generator |
-| **Backend Runtime** | Spring Boot 3.x, Java 17, Maven 3.8+ |
-| **AI & LLM Services** | Google Gemini AI API (`google-genai` SDK) |
-| **Database & Auth** | PostgreSQL Database Schema, REST API Client |
+### Frontend
+- **Framework**: React 19, TypeScript, Vite
+- **Styling**: Tailwind CSS v4, shadcn/ui, Framer Motion
+- **Icons**: Phosphor Icons, Lucide Icons
+- **State & Data Fetching**: TanStack Query (React Query v5)
+- **Excel Export**: SheetJS (`xlsx`)
 
----
+### Backend
+- **Framework**: Java 17, Spring Boot 3.x
+- **Data & Persistence**: Spring Data JPA, Hibernate, PostgreSQL
+- **Export & Utilities**: Apache POI (`poi-ooxml`), Jakarta Validation
+- **Build Tool**: Apache Maven
 
-## ─── 06 // QUICKSTART & SETUP GUIDE
+### Discovery & Intelligence
+- **Geospatial**: Geoapify Places API, OpenStreetMap / Overpass API
+- **Social & Search**: Social X-Ray search adapters
+- **AI Qualification**: Google Gemini API (`RelevanceQualifier`)
+
+─────────────────────────────────────────────
+
+## 09 // PROJECT STRUCTURE
+
+```
+setuleads/
+├── frontend/                     # Client application (React + Vite)
+│   ├── src/
+│   │   ├── api/                  # API client functions
+│   │   ├── assets/               # Brand SVGs & static assets
+│   │   ├── components/           # UI, layout, and visualizer components
+│   │   ├── hooks/                # Custom React Query hooks
+│   │   ├── lib/                  # Utilities & Excel exporter
+│   │   └── pages/                # Main application views & Case Study
+│   ├── public/                   # Favicon and static files
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── backend/                      # Service application (Spring Boot)
+│   ├── src/
+│   │   ├── main/java/com/setuleads/
+│   │   │   ├── config/           # Web & CORS configuration
+│   │   │   ├── controller/       # REST API endpoints
+│   │   │   ├── dto/              # Request & Response Data Transfer Objects
+│   │   │   ├── entity/           # JPA Database Entities
+│   │   │   ├── integration/      # Geoapify, OSM, Gemini & X-Ray clients
+│   │   │   ├── repository/       # Spring Data Repositories
+│   │   │   └── service/          # Business logic & qualification engines
+│   │   └── test/java/com/setuleads/
+│   └── pom.xml
+│
+├── package.json                  # Root orchestration scripts
+├── .gitignore
+└── README.md
+```
+
+─────────────────────────────────────────────
+
+## 10 // LOCAL SETUP
 
 ### Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **JDK**: Java 17 or higher
-- **Maven**: v3.8.0 or higher
+- Node.js v18+
+- JDK 17+
+- Maven 3.8+
+- PostgreSQL database instance
 
-### 1. Clone & Install Frontend Dependencies
+### 1. Environment Configuration
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/setuleads.git
-cd setuleads
+Create a `.env` file inside `frontend/`:
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
 
-# Install NPM packages
-npm install
+Configure backend environment variables in `backend/src/main/resources/application.properties` (or environment):
+```properties
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/setuleads
+SPRING_DATASOURCE_USERNAME=your_db_user
+SPRING_DATASOURCE_PASSWORD=your_db_password
+
+GEOAPIFY_API_KEY=your_geoapify_key
+GEMINI_API_KEY=your_gemini_key
 ```
 
 ### 2. Frontend Development Server
 
 ```bash
-# Start Vite development server
+# From project root
+cd frontend
+npm install
 npm run dev
 ```
-The application will launch at `http://localhost:5173`.
+The frontend will start at `http://localhost:5173`.
 
-### 3. Backend Spring Boot Server Setup
+### 3. Backend Service Server
 
 ```bash
-# Navigate to backend directory
+# From project root
 cd backend
-
-# Compile & execute Spring Boot server
 mvn spring-boot:run
 ```
-The backend server will run on `http://localhost:8080`.
+The backend API server will run on `http://localhost:8080`.
 
----
+─────────────────────────────────────────────
 
-## ─── 07 // VERIFICATION & TESTING
+## 11 // TESTING & VERIFICATION
 
-Run full automated test suites to ensure zero compilation or regression errors across frontend and backend layers:
+### Automated Verification Commands
 
 ```bash
-# Execute Frontend TypeScript & Vite Production Build
+# Execute Frontend Production Build
 npm run build
 
-# Execute Spring Boot JUnit Test Suite
-cd backend
-mvn test
+# Execute Backend Test Suite
+npm run test:backend
 ```
 
----
+### Manual Verification Checklist
+- **Search Execution**: Run a real query (e.g., "Plumbers in Austin, TX") and verify candidates are returned.
+- **Provider Fallback**: Verify discovery handles API failures gracefully without crashing the UI.
+- **Smart Text Harvester**: Paste a raw text block into the Harvester modal and verify extracted fields.
+- **Website Inspection**: Trigger inspection on a lead and verify response code, SSL status, and viewport flags.
+- **Pipeline Stage Sync**: Drag a lead across Kanban columns and confirm database persistence.
+- **Excel Export**: Click "Export to Excel" and verify the generated `.xlsx` file.
 
-## ─── 08 // DESIGN SYSTEM SPECIFICATION
+─────────────────────────────────────────────
 
-SETULEADS follows a strict **Dark Editorial Brutalist** visual identity:
+## 12 // REST API REFERENCE
 
-| Tokens | Color Hex | Visual Purpose |
+| Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `--color-base` | `#080808` | Canvas & Deep Background |
-| `--color-panel` | `#101010` | Workstation Panels & Modal Cards |
-| `--color-surface` | `#151515` | Elevated Card Surfaces |
-| `--color-border` | `#222222` | Architectural Grid Lines |
-| `--color-burnt-orange` | `#FF4A00` | Primary Tactical Accent & Radar Sweep |
-| `--color-cyber-emerald` | `#00E599` | Success Signals & Active Radar Indicators |
-| `--color-ink` | `#F4F0E8` | High-Contrast Primary Typography |
-| `--color-muted` | `#8E8982` | Monospaced Secondary Labels & Coordinates |
+| `POST` | `/api/v1/discovery/search` | Trigger multi-source candidate discovery query |
+| `POST` | `/api/v1/websites/check` | Execute backend technical website inspection |
+| `GET` | `/api/v1/leads` | Retrieve leads list with optional stage/source filtering |
+| `GET` | `/api/v1/leads/{id}` | Retrieve single lead details |
+| `POST` | `/api/v1/leads` | Save a new qualified lead manually |
+| `PUT` | `/api/v1/leads/{id}` | Update existing lead record details |
+| `DELETE` | `/api/v1/leads/{id}` | Remove a lead record |
+| `POST` | `/api/v1/leads/{id}/stage` | Update pipeline stage (`NEW`, `CONTACTED`, etc.) |
+| `POST` | `/api/v1/leads/harvest-paste` | Parse raw text stream and import candidate leads |
+| `POST` | `/api/v1/leads/generate-outreach` | Generate personalized AI pitch hook for a candidate |
+| `GET` | `/api/v1/leads/{leadId}/activities` | Get activity log for a specific lead |
+| `POST` | `/api/v1/leads/{leadId}/activities` | Log a new note, call, or email activity |
+| `GET` | `/api/v1/leads/export` | Download formatted `.xlsx` Excel spreadsheet |
 
----
+─────────────────────────────────────────────
 
-<div align="center">
+## 13 // DESIGN SYSTEM
 
-<img src="src/assets/SetuLeads_Monochrome.svg" alt="SetuLeads Monochrome Mark" width="120" />
+SetuLeads utilizes a **Dark Editorial Brutalist** visual identity focused on information density, high contrast, and architectural layout boundaries.
 
-<br/>
+```
+┌─────────────────────────────────────────────────────────┐
+│ COLOR PALETTE                                           │
+├─────────────────────────────────────────────────────────┤
+│ #080808   Deep Black Base Canvas                        │
+│ #101010   Workstation Panel Surface                     │
+│ #151515   Elevated Card Surface                         │
+│ #222222   Architectural Grid Borders                    │
+│ #FF4A00   Burnt Tactical Orange (Target & Action)       │
+│ #00E599   Cyber Emerald (Success & Live Status)         │
+│ #F4F0E8   Warm Editorial White (Primary Text)           │
+│ #8E8982   Muted Text & Monospace Metadata               │
+└─────────────────────────────────────────────────────────┘
+```
 
-**SETULEADS INTELLIGENCE ENGINE** • *Structural Web Inspection & Prospect Discovery Bridge*  
-Developed for High-Precision Prospecting & Growth Execution.
+- **Black** forms the workstation canvas.
+- **Burnt Orange** highlights active targets, primary actions, and radar sweeps.
+- **Cyber Emerald** indicates valid status signals and operational health.
+- **Warm White** provides high-contrast text readability against dark surfaces.
+- **Borders** act as thin architectural inspection lines.
 
-</div>
+─────────────────────────────────────────────
+
+## 14 // CURRENT LIMITATIONS
+
+- **Public Search Indexing**: Social X-Ray relies on publicly indexed web pages; results depend on engine index freshness.
+- **Candidate Filtering**: Automated relevance qualification drastically reduces noise, but edge cases can yield occasional false positives.
+- **Observable Inspection**: Backend website checks evaluate observable technical headers, SSL certificates, and DOM markers—not server-side internal source code.
+- **Contact Completeness**: Some discovered local businesses publish phone numbers but omit direct email addresses.
+
+─────────────────────────────────────────────
+
+## 15 // ROADMAP
+
+- Enhanced entity resolution for cross-referencing social profiles with local map listings.
+- Expanded technical audit rules for performance metrics and CMS detection.
+- Custom outreach email template builder with variable tag substitution.
+- Optional webhook notifications for automated background harvest runs.
+
+─────────────────────────────────────────────
+
+SETULEADS  
+Find the signal. Check the structure. Keep the lead.
+
+Built as a focused prospecting workstation.
