@@ -1,7 +1,15 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+let rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+rawBaseUrl = rawBaseUrl.replace(/\/+$/, '');
+
+if (!rawBaseUrl.endsWith('/api/v1')) {
+  rawBaseUrl = `${rawBaseUrl}/api/v1`;
+}
+
+const API_BASE_URL = rawBaseUrl;
 
 export async function apiClient(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${API_BASE_URL}${cleanEndpoint}`;
   
   const headers = {
     'Content-Type': 'application/json',
@@ -9,7 +17,7 @@ export async function apiClient(endpoint, options = {}) {
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 30000);
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 60000);
 
   const config = {
     ...options,
@@ -47,7 +55,7 @@ export async function apiClient(endpoint, options = {}) {
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error('API Request timed out after 30 seconds');
+      throw new Error('API Request timed out after 60 seconds');
     }
     throw err;
   }
