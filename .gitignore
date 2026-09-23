@@ -9,7 +9,12 @@ pnpm-debug.log*
 frontend/node_modules
 frontend/dist
 frontend/dist-ssr
-frontend/.env.local
+# Environment & Secret Files
+.env
+.env.*
+!.env.example
+*.env
+*.env.local
 
 # Root level node_modules / dist fallback
 node_modules
