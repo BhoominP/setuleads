@@ -10,12 +10,10 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:}
   jpa:
+    open-in-view: false
     database-platform: ${SPRING_JPA_DATABASE_PLATFORM:org.hibernate.dialect.PostgreSQLDialect}
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
-    properties:
-      hibernate:
-        dialect: ${HIBERNATE_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
     show-sql: false
 
 geoapify:
