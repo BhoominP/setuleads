@@ -463,8 +463,8 @@ public class RelevanceQualifier {
         // =========================================================
         // 4. POSITIVE SIGNAL VALIDATION (REJECT IF NO QUERY MATCH)
         // =========================================================
-        boolean isMapPlace = candidate.getGeoapifyPlaceId() != null || candidate.getOsmId() != null;
-        boolean hasAnyPositiveQueryMatch = categoryMatched || phraseMatched || nameTokenMatched || domainMatched ||
+        boolean isMapPlace = candidate.getGeoapifyPlaceId() != null || candidate.getOsmId() != null || candidate.getOvertureId() != null;
+        boolean hasAnyPositiveQueryMatch = categoryMatched || phraseMatched || nameTokenMatched || domainMatched || isMapPlace ||
                 (intent.intentType == SearchIntentType.STARTUP && containsCommercialToken(nameTokens)) ||
                 (intent.intentType == SearchIntentType.GENERAL_BUSINESS && containsCommercialToken(nameTokens));
 
@@ -551,10 +551,8 @@ public class RelevanceQualifier {
             qualificationLevel = "HIGH";
         } else if (compositeLeadOpportunity >= 60) {
             qualificationLevel = "POTENTIAL";
-        } else if (compositeLeadOpportunity >= 40) {
-            qualificationLevel = "LOW";
         } else {
-            qualificationLevel = "REJECTED";
+            qualificationLevel = "LOW";
         }
 
         candidate.setQualificationLevel(qualificationLevel);
