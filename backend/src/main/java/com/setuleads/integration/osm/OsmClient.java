@@ -52,113 +52,73 @@ public class OsmClient {
 
     public OsmSearchResult searchOsm(String query, String location, String areaName) {
         List<CandidateDTO> candidates = new ArrayList<>();
-        int passes = 0;
-        String status = "SUCCESS";
+        int passes = 1;
+        String status = "SUCCESS_ZERO_RESULTS";
 
         try {
-            // Step 1: Geocode location to bounding box via Nominatim
-            double[] bbox = geocodeBbox(location);
-            if (bbox == null) {
-                logger.warn("OSM SEARCH: Nominatim could not geocode location '{}'", location);
-                return new OsmSearchResult(Collections.emptyList(), 0, "LOCATION_GEOCODE_FAILED");
+            // Step 1: Direct Nominatim POI Search (1 fast HTTP call ~300ms)
+            List<CandidateDTO> nomCandidates = searchNominatimDirect(query, location, areaName);
+            if (!nomCandidates.isEmpty()) {
+                candidates.addAll(nomCandidates);
+                status = "SUCCESS_WITH_RESULTS";
+                logger.info("OSM NOMINATIM SEARCH: harvested {} POI candidates for query='{}'", nomCandidates.size(), query);
             }
 
-            passes++;
+            // Step 2: Optional Overpass QL Spatial Query for additional tags (fast 2s timeout per mirror)
+            double lat = !candidates.isEmpty() && candidates.get(0).getLatitude() != null ? candidates.get(0).getLatitude() : 0.0;
+            double lon = !candidates.isEmpty() && candidates.get(0).getLongitude() != null ? candidates.get(0).getLongitude() : 0.0;
 
-            // Expand small bounding box if needed (minimum 0.08 deg radius ~ 8-10 km radius for city coverage)
-            double minLat = bbox[0];
-            double minLon = bbox[1];
-            double maxLat = bbox[2];
-            double maxLon = bbox[3];
+            if (lat != 0.0 && lon != 0.0) {
+                String bboxStr = String.format(Locale.US, "%f,%f,%f,%f", lat - 0.06, lon - 0.06, lat + 0.06, lon + 0.06);
+                String overpassQl = String.format(Locale.US,
+                        "[out:json][timeout:2];" +
+                        "(" +
+                        "  node[\"office\"][\"name\"](%s);" +
+                        "  way[\"office\"][\"name\"](%s);" +
+                        "  node[\"shop\"][\"name\"](%s);" +
+                        "  way[\"shop\"][\"name\"](%s);" +
+                        "  node[\"amenity\"][\"name\"](%s);" +
+                        "  way[\"amenity\"][\"name\"](%s);" +
+                        ");" +
+                        "out center qt 200;",
+                        bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr);
 
-            if ((maxLat - minLat) < 0.08) {
-                double midLat = (minLat + maxLat) / 2.0;
-                minLat = midLat - 0.06;
-                maxLat = midLat + 0.06;
-            }
-            if ((maxLon - minLon) < 0.08) {
-                double midLon = (minLon + maxLon) / 2.0;
-                minLon = midLon - 0.06;
-                maxLon = midLon + 0.06;
-            }
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+                headers.set("User-Agent", "SetuLeads/1.0 (contact@setuleads.internal)");
+                HttpEntity<String> entity = new HttpEntity<>("data=" + overpassQl, headers);
 
-            // Bounding box format for Overpass: south, west, north, east
-            String bboxStr = String.format(Locale.US, "%f,%f,%f,%f", minLat, minLon, maxLat, maxLon);
-
-            // Construct ultra-fast Overpass QL query with QuadTile (qt) spatial indexing
-            String overpassQl = String.format(Locale.US,
-                    "[out:json][timeout:3];" +
-                    "(" +
-                    "  node[\"office\"][\"name\"](%s);" +
-                    "  way[\"office\"][\"name\"](%s);" +
-                    "  node[\"shop\"][\"name\"](%s);" +
-                    "  way[\"shop\"][\"name\"](%s);" +
-                    "  node[\"craft\"][\"name\"](%s);" +
-                    "  way[\"craft\"][\"name\"](%s);" +
-                    "  node[\"amenity\"][\"name\"](%s);" +
-                    "  way[\"amenity\"][\"name\"](%s);" +
-                    ");" +
-                    "out center qt 400;",
-                    bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.set("User-Agent", "SetuLeads/1.0 (contact@setuleads.internal)");
-
-            HttpEntity<String> entity = new HttpEntity<>("data=" + overpassQl, headers);
-
-            logger.info("OSM OVERPASS SEARCH: query='{}', location='{}', bbox={}", query, location, bboxStr);
-
-            boolean success = false;
-            String lastError = null;
-
-            for (String endpoint : OVERPASS_URLS) {
-                try {
-                    ResponseEntity<String> response = fastOsmRestTemplate.exchange(endpoint, HttpMethod.POST, entity, String.class);
-                    if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                        JsonNode root = objectMapper.readTree(response.getBody());
-                        JsonNode elements = root.path("elements");
-
-                        int count = 0;
-                        if (elements.isArray()) {
-                            for (JsonNode element : elements) {
-                                CandidateDTO candidate = mapElementToCandidate(element, query, areaName);
-                                if (candidate != null) {
-                                    candidates.add(candidate);
-                                    count++;
+                for (String endpoint : OVERPASS_URLS) {
+                    try {
+                        ResponseEntity<String> response = fastOsmRestTemplate.exchange(endpoint, HttpMethod.POST, entity, String.class);
+                        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                            JsonNode root = objectMapper.readTree(response.getBody());
+                            JsonNode elements = root.path("elements");
+                            if (elements.isArray()) {
+                                for (JsonNode element : elements) {
+                                    CandidateDTO candidate = mapElementToCandidate(element, query, areaName);
+                                    if (candidate != null) {
+                                        candidates.add(candidate);
+                                    }
                                 }
                             }
+                            break;
                         }
-                        logger.info("OSM OVERPASS SEARCH: returned {} elements, mapped {} candidates from {}", elements.size(), count, endpoint);
-                        status = "SUCCESS";
-                        success = true;
-                        break;
+                    } catch (Exception ex) {
+                        logger.debug("OSM Overpass mirror {} skipped: {}", endpoint, ex.getMessage());
                     }
-                } catch (Exception ex) {
-                    String cleanErr = cleanErrorMessage(ex.getMessage());
-                    if (!cleanErr.contains("SunCertPathBuilderException") && !cleanErr.contains("PKIX")) {
-                        lastError = cleanErr;
-                    }
-                    logger.warn("OSM OVERPASS mirror endpoint failed ({}): {}", endpoint, cleanErr);
                 }
             }
 
-            if (!success) {
-                logger.warn("OSM OVERPASS failed or timed out. Attempting Nominatim direct search fallback for '{}' in '{}'", query, location);
-                List<CandidateDTO> nomCandidates = searchNominatimDirect(query, location, areaName);
-                if (!nomCandidates.isEmpty()) {
-                    candidates.addAll(nomCandidates);
-                    status = "SUCCESS";
-                    success = true;
-                    logger.info("OSM NOMINATIM DIRECT FALLBACK: harvested {} candidates for '{}'", nomCandidates.size(), query);
-                } else {
-                    status = "OVERPASS_TIMEOUT_FALLBACK: " + (lastError != null ? lastError : "Overpass Server Busy");
-                }
+            if (!candidates.isEmpty()) {
+                status = "SUCCESS_WITH_RESULTS";
             }
 
         } catch (Exception e) {
-            status = "ERROR: " + cleanErrorMessage(e.getMessage());
             logger.error("OSM SEARCH EXCEPTION: {}", e.getMessage(), e);
+            if (candidates.isEmpty()) {
+                status = "LOCATION_GEOCODE_FAILED";
+            }
         }
 
         return new OsmSearchResult(candidates, passes, status);
@@ -171,9 +131,6 @@ public class OsmClient {
         }
         if (candidates.isEmpty()) {
             candidates = searchNominatimUrl(location + " office", query, areaName);
-        }
-        if (candidates.isEmpty()) {
-            candidates = searchNominatimUrl(location, query, areaName);
         }
         return candidates;
     }
