@@ -45,18 +45,22 @@ public class GeoapifyClient {
     }
 
     public GeoapifySearchResult searchPlacesGrid(String query, String location, String areaName) {
+        return searchPlacesGrid(query, location, areaName, null);
+    }
+
+    public GeoapifySearchResult searchPlacesGrid(String query, String location, String areaName, double[] preResolvedBbox) {
         if (apiKey == null || apiKey.trim().isEmpty()) {
             logger.warn("GEOAPIFY SEARCH: API key is not configured");
             return new GeoapifySearchResult(Collections.emptyList(), 0, "MISSING_API_KEY");
         }
 
-        double[] centerAndBbox = geocodeLocation(location);
+        double[] centerAndBbox = preResolvedBbox != null ? preResolvedBbox : geocodeLocation(location);
         if (centerAndBbox == null) {
             return searchPlaces(query, location, areaName);
         }
 
-        double centerLat = centerAndBbox[0];
-        double centerLon = centerAndBbox[1];
+        double centerLat = centerAndBbox.length >= 6 ? centerAndBbox[4] : (centerAndBbox[0] + centerAndBbox[2]) / 2.0;
+        double centerLon = centerAndBbox.length >= 6 ? centerAndBbox[5] : (centerAndBbox[1] + centerAndBbox[3]) / 2.0;
 
         // 4 Spatial Quadrants (North-East, North-West, South-East, South-West offset by ~0.045 degrees ~ 5km)
         double[][] gridPoints = {
@@ -220,7 +224,11 @@ public class GeoapifyClient {
         return new GeoapifySearchResult(candidates, requestsCount, status);
     }
 
-    private double[] geocodeLocation(String location) {
+    public double[] geocodeLocation(String location) {
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            logger.warn("GEOAPIFY GEOCODE: API key is not configured");
+            return null;
+        }
         try {
             String url = UriComponentsBuilder.fromHttpUrl(GEOCODE_URL)
                     .queryParam("text", location)
@@ -237,8 +245,24 @@ public class GeoapifyClient {
                     double lat = properties.path("lat").asDouble(0.0);
                     double lon = properties.path("lon").asDouble(0.0);
                     if (lat != 0.0 && lon != 0.0) {
-                        return new double[]{lat, lon};
+                        double south = lat - 0.06;
+                        double west = lon - 0.06;
+                        double north = lat + 0.06;
+                        double east = lon + 0.06;
+
+                        JsonNode bboxNode = properties.path("bbox");
+                        if (bboxNode.isArray() && bboxNode.size() == 4) {
+                            west = bboxNode.get(0).asDouble();
+                            south = bboxNode.get(1).asDouble();
+                            east = bboxNode.get(2).asDouble();
+                            north = bboxNode.get(3).asDouble();
+                        }
+                        logger.info("GEOAPIFY GEOCODE: resolved location='{}' to lat={}, lon={}, bbox=[{}, {}, {}, {}]",
+                                location, lat, lon, south, west, north, east);
+                        return new double[]{south, west, north, east, lat, lon};
                     }
+                } else {
+                    logger.warn("GEOAPIFY GEOCODE: zero results for location='{}'", location);
                 }
             }
         } catch (Exception e) {

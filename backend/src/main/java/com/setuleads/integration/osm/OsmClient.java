@@ -51,62 +51,76 @@ public class OsmClient {
     }
 
     public OsmSearchResult searchOsm(String query, String location, String areaName) {
+        return searchOsm(query, location, areaName, null);
+    }
+
+    public OsmSearchResult searchOsm(String query, String location, String areaName, double[] preResolvedBbox) {
         List<CandidateDTO> candidates = new ArrayList<>();
         int passes = 1;
         String status = "SUCCESS_ZERO_RESULTS";
 
+        double[] bbox = preResolvedBbox;
+        if (bbox == null) {
+            logger.info("OSM SEARCH: No pre-resolved bbox provided for '{}', attempting Nominatim geocode fallback", location);
+            bbox = geocodeBbox(location);
+        }
+
+        if (bbox == null) {
+            logger.warn("OSM SEARCH: Geocoding failed for location='{}' (both Geoapify and Nominatim unavailable or returned 0 results)", location);
+            return new OsmSearchResult(Collections.emptyList(), 1, "LOCATION_GEOCODE_FAILED");
+        }
+
         try {
-            // Step 1: Direct Nominatim POI Search (1 fast HTTP call ~300ms)
-            List<CandidateDTO> nomCandidates = searchNominatimDirect(query, location, areaName);
-            if (!nomCandidates.isEmpty()) {
-                candidates.addAll(nomCandidates);
-                status = "SUCCESS_WITH_RESULTS";
-                logger.info("OSM NOMINATIM SEARCH: harvested {} POI candidates for query='{}'", nomCandidates.size(), query);
-            }
+            // Spatial Overpass QL Query using resolved bounding box
+            double south = bbox[0];
+            double west = bbox[1];
+            double north = bbox[2];
+            double east = bbox[3];
 
-            // Step 2: Optional Overpass QL Spatial Query for additional tags (fast 2s timeout per mirror)
-            double lat = !candidates.isEmpty() && candidates.get(0).getLatitude() != null ? candidates.get(0).getLatitude() : 0.0;
-            double lon = !candidates.isEmpty() && candidates.get(0).getLongitude() != null ? candidates.get(0).getLongitude() : 0.0;
+            String bboxStr = String.format(Locale.US, "%f,%f,%f,%f", south, west, north, east);
+            String overpassQl = String.format(Locale.US,
+                    "[out:json][timeout:2];" +
+                    "(" +
+                    "  node[\"office\"][\"name\"](%s);" +
+                    "  way[\"office\"][\"name\"](%s);" +
+                    "  node[\"shop\"][\"name\"](%s);" +
+                    "  way[\"shop\"][\"name\"](%s);" +
+                    "  node[\"amenity\"][\"name\"](%s);" +
+                    "  way[\"amenity\"][\"name\"](%s);" +
+                    ");" +
+                    "out center qt 200;",
+                    bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr);
 
-            if (lat != 0.0 && lon != 0.0) {
-                String bboxStr = String.format(Locale.US, "%f,%f,%f,%f", lat - 0.06, lon - 0.06, lat + 0.06, lon + 0.06);
-                String overpassQl = String.format(Locale.US,
-                        "[out:json][timeout:2];" +
-                        "(" +
-                        "  node[\"office\"][\"name\"](%s);" +
-                        "  way[\"office\"][\"name\"](%s);" +
-                        "  node[\"shop\"][\"name\"](%s);" +
-                        "  way[\"shop\"][\"name\"](%s);" +
-                        "  node[\"amenity\"][\"name\"](%s);" +
-                        "  way[\"amenity\"][\"name\"](%s);" +
-                        ");" +
-                        "out center qt 200;",
-                        bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.set("User-Agent", "SetuLeads/1.0 (contact@setuleads.internal)");
+            HttpEntity<String> entity = new HttpEntity<>("data=" + overpassQl, headers);
 
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-                headers.set("User-Agent", "SetuLeads/1.0 (contact@setuleads.internal)");
-                HttpEntity<String> entity = new HttpEntity<>("data=" + overpassQl, headers);
-
-                for (String endpoint : OVERPASS_URLS) {
-                    try {
-                        ResponseEntity<String> response = fastOsmRestTemplate.exchange(endpoint, HttpMethod.POST, entity, String.class);
-                        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                            JsonNode root = objectMapper.readTree(response.getBody());
-                            JsonNode elements = root.path("elements");
-                            if (elements.isArray()) {
-                                for (JsonNode element : elements) {
-                                    CandidateDTO candidate = mapElementToCandidate(element, query, areaName);
-                                    if (candidate != null) {
-                                        candidates.add(candidate);
-                                    }
+            for (String endpoint : OVERPASS_URLS) {
+                try {
+                    ResponseEntity<String> response = fastOsmRestTemplate.exchange(endpoint, HttpMethod.POST, entity, String.class);
+                    if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                        JsonNode root = objectMapper.readTree(response.getBody());
+                        JsonNode elements = root.path("elements");
+                        if (elements.isArray()) {
+                            for (JsonNode element : elements) {
+                                CandidateDTO candidate = mapElementToCandidate(element, query, areaName);
+                                if (candidate != null) {
+                                    candidates.add(candidate);
                                 }
                             }
-                            break;
                         }
-                    } catch (Exception ex) {
-                        logger.debug("OSM Overpass mirror {} skipped: {}", endpoint, ex.getMessage());
+                        break;
                     }
+                } catch (Exception ex) {
+                    logger.debug("OSM Overpass mirror {} skipped: {}", endpoint, ex.getMessage());
+                }
+            }
+
+            if (candidates.isEmpty()) {
+                List<CandidateDTO> nomCandidates = searchNominatimDirect(query, location, areaName);
+                if (!nomCandidates.isEmpty()) {
+                    candidates.addAll(nomCandidates);
                 }
             }
 
@@ -204,7 +218,7 @@ public class OsmClient {
         return msg.replaceAll("<[^>]*>", "").trim();
     }
 
-    private double[] geocodeBbox(String location) {
+    public double[] geocodeBbox(String location) {
         try {
             String url = UriComponentsBuilder.fromHttpUrl(NOMINATIM_URL)
                     .queryParam("q", location)
@@ -217,6 +231,8 @@ public class OsmClient {
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            logger.info("NOMINATIM GEOCODE: location='{}', httpStatus={}", location, response.getStatusCode());
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 JsonNode root = objectMapper.readTree(response.getBody());
                 if (root.isArray() && root.size() > 0) {
@@ -227,12 +243,20 @@ public class OsmClient {
                         double north = boundingbox.get(1).asDouble();
                         double west = boundingbox.get(2).asDouble();
                         double east = boundingbox.get(3).asDouble();
-                        return new double[]{south, west, north, east};
+                        double lat = first.path("lat").asDouble((south + north) / 2.0);
+                        double lon = first.path("lon").asDouble((west + east) / 2.0);
+                        return new double[]{south, west, north, east, lat, lon};
                     }
+                } else {
+                    logger.warn("NOMINATIM GEOCODE: zero results for location='{}' (empty array response)", location);
                 }
             }
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            logger.error("NOMINATIM GEOCODE HTTP ERROR [{}] for '{}': {}", e.getStatusCode(), location, e.getResponseBodyAsString());
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            logger.error("NOMINATIM GEOCODE NETWORK/TIMEOUT for '{}': {}", location, e.getMessage());
         } catch (Exception e) {
-            logger.warn("Nominatim geocoding exception: {}", e.getMessage());
+            logger.error("NOMINATIM GEOCODE UNEXPECTED ERROR for '{}': {}", location, e.getMessage(), e);
         }
         return null;
     }

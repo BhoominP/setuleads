@@ -72,13 +72,23 @@ public class DiscoveryService {
         boolean runGeoapify = sources.contains("GEOAPIFY") || sources.contains("GOOGLE_PLACES");
         boolean runOsm = sources.contains("OPENSTREETMAP") || sources.contains("OSM");
 
+        double[] sharedBbox = null;
+        if (runGeoapify || runOsm) {
+            sharedBbox = geoapifyClient.geocodeLocation(location);
+            if (sharedBbox == null && runOsm) {
+                logger.warn("GEOCODING: Primary Geoapify geocode returned null for '{}', attempting OsmClient Nominatim fallback", location);
+                sharedBbox = osmClient.geocodeBbox(location);
+            }
+        }
+        final double[] finalBbox = sharedBbox;
+
         CompletableFuture<GeoapifyClient.GeoapifySearchResult> geoapifyFuture = CompletableFuture.supplyAsync(() -> {
             if (!runGeoapify) return new GeoapifyClient.GeoapifySearchResult(Collections.emptyList(), 0, "NOT_ATTEMPTED");
             List<CandidateDTO> combined = new ArrayList<>();
             int totalReqs = 0;
             String lastStatus = "SUCCESS_ZERO_RESULTS";
             for (String q : expandedTerms) {
-                GeoapifyClient.GeoapifySearchResult geoRes = geoapifyClient.searchPlacesGrid(q, location, location);
+                GeoapifyClient.GeoapifySearchResult geoRes = geoapifyClient.searchPlacesGrid(q, location, location, finalBbox);
                 totalReqs += geoRes.requestsCount;
                 lastStatus = geoRes.status;
                 if (!geoRes.candidates.isEmpty()) {
@@ -92,7 +102,7 @@ public class DiscoveryService {
 
         CompletableFuture<OsmClient.OsmSearchResult> osmFuture = CompletableFuture.supplyAsync(() -> {
             if (!runOsm) return new OsmClient.OsmSearchResult(Collections.emptyList(), 0, "NOT_ATTEMPTED");
-            return osmClient.searchOsm(baseQuery, location, location);
+            return osmClient.searchOsm(baseQuery, location, location, finalBbox);
         });
 
         try {

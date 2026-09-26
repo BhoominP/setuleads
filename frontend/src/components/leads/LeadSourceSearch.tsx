@@ -201,11 +201,19 @@ export function LeadSourceSearch() {
               onClick={() => toggleProvider('geoapify')}
               className={`font-mono text-xs px-3 py-1 border transition-all flex items-center gap-2 uppercase tracking-wider ${
                 selectedProviders.includes('geoapify')
-                  ? 'bg-[#151515] text-[#F4F0E8] border-[#FF4A00] font-bold shadow-[0_0_10px_rgba(255,74,0,0.12)]'
+                  ? engineState.providerStatus.geoapify === 'failed'
+                    ? 'bg-[#151515] text-red-400 border-red-500 font-bold shadow-[0_0_10px_rgba(239,68,68,0.2)]'
+                    : 'bg-[#151515] text-[#F4F0E8] border-[#FF4A00] font-bold shadow-[0_0_10px_rgba(255,74,0,0.12)]'
                   : 'text-[#8E8982] border-transparent hover:text-[#F4F0E8]'
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${selectedProviders.includes('geoapify') ? 'bg-[#FF4A00] animate-pulse' : 'bg-[#8E8982]'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                selectedProviders.includes('geoapify')
+                  ? engineState.providerStatus.geoapify === 'failed'
+                    ? 'bg-red-500'
+                    : 'bg-[#FF4A00] animate-pulse'
+                  : 'bg-[#8E8982]'
+              }`} />
               Geoapify
             </button>
 
@@ -214,11 +222,19 @@ export function LeadSourceSearch() {
               onClick={() => toggleProvider('osm')}
               className={`font-mono text-xs px-3 py-1 border transition-all flex items-center gap-2 uppercase tracking-wider ${
                 selectedProviders.includes('osm')
-                  ? 'bg-[#151515] text-[#F4F0E8] border-[#00E599] font-bold shadow-[0_0_10px_rgba(0,229,153,0.12)]'
+                  ? engineState.providerStatus.osm === 'failed'
+                    ? 'bg-[#151515] text-red-400 border-red-500 font-bold shadow-[0_0_10px_rgba(239,68,68,0.2)]'
+                    : 'bg-[#151515] text-[#F4F0E8] border-[#00E599] font-bold shadow-[0_0_10px_rgba(0,229,153,0.12)]'
                   : 'text-[#8E8982] border-transparent hover:text-[#F4F0E8]'
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${selectedProviders.includes('osm') ? 'bg-[#00E599] animate-pulse' : 'bg-[#8E8982]'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                selectedProviders.includes('osm')
+                  ? engineState.providerStatus.osm === 'failed'
+                    ? 'bg-red-500'
+                    : 'bg-[#00E599] animate-pulse'
+                  : 'bg-[#8E8982]'
+              }`} />
               OpenStreetMap (OSM)
             </button>
 
