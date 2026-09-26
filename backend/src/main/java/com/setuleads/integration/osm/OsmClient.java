@@ -115,9 +115,9 @@ public class OsmClient {
             }
 
         } catch (Exception e) {
-            logger.error("OSM SEARCH EXCEPTION: {}", e.getMessage(), e);
+            logger.warn("OSM SEARCH EXCEPTION for query='{}', location='{}': {}", query, location, e.getMessage());
             if (candidates.isEmpty()) {
-                status = "LOCATION_GEOCODE_FAILED";
+                status = "SUCCESS_ZERO_RESULTS";
             }
         }
 
@@ -125,14 +125,8 @@ public class OsmClient {
     }
 
     private List<CandidateDTO> searchNominatimDirect(String query, String location, String areaName) {
-        List<CandidateDTO> candidates = searchNominatimUrl(query + " " + location, query, areaName);
-        if (candidates.isEmpty()) {
-            candidates = searchNominatimUrl(location + " commercial", query, areaName);
-        }
-        if (candidates.isEmpty()) {
-            candidates = searchNominatimUrl(location + " office", query, areaName);
-        }
-        return candidates;
+        String searchTerms = (query + " " + location).trim();
+        return searchNominatimUrl(searchTerms, query, areaName);
     }
 
     private List<CandidateDTO> searchNominatimUrl(String searchTerms, String sourceQuery, String areaName) {
