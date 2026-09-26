@@ -177,4 +177,18 @@ class RelevanceQualifierTest {
         assertEquals("RELEVANT", result.status);
         assertTrue(result.score >= 0.50);
     }
+
+    @Test
+    @DisplayName("TEST 11: 'cake shop' query + 'Boulangerie Poilâne' (Paris map place) -> RELEVANT")
+    void test11_CakeShopParisMapPlace() {
+        CandidateDTO candidate = new CandidateDTO();
+        candidate.setBusinessName("Boulangerie Poilâne");
+        candidate.setCategories(Arrays.asList("commercial.food_and_drink.bakery", "shop"));
+        candidate.setGeoapifyPlaceId("place_paris_123");
+
+        RelevanceQualifier.QualificationResult result = qualifier.qualify(candidate, "cake shop");
+
+        assertEquals("RELEVANT", result.status, "Real Paris bakery MUST qualify as RELEVANT for cake shop query!");
+        assertTrue(result.score >= 0.50);
+    }
 }

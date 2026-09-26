@@ -35,6 +35,7 @@ export function LeadSourceSearch() {
     'osm',
     'social_xray',
   ]);
+  const [useGemini, setUseGemini] = useState(true);
   const [importing, setImporting] = useState<string | null>(null);
   const [imported, setImported] = useState<Set<string>>(new Set());
   const [isClipboardModalOpen, setIsClipboardModalOpen] = useState(false);
@@ -55,7 +56,7 @@ export function LeadSourceSearch() {
 
   function handleSearch() {
     setHasSearched(true);
-    search(query, location, selectedProviders);
+    search(query, location, selectedProviders, useGemini);
   }
 
   const [previewLead, setPreviewLead] = useState<UnifiedSearchResult | null>(null);
@@ -222,6 +223,20 @@ export function LeadSourceSearch() {
               <span className={`w-1.5 h-1.5 rounded-full ${selectedProviders.includes('social_xray') ? 'bg-[#FF4A00] animate-pulse' : 'bg-[#8E8982]'}`} />
               Social X-Ray
             </button>
+
+            <button
+              type="button"
+              onClick={() => setUseGemini(!useGemini)}
+              className={`font-mono text-xs px-3 py-1 border transition-all flex items-center gap-2 uppercase tracking-wider ${
+                useGemini
+                  ? 'bg-[#151515] text-[#FFB800] border-[#FFB800] font-bold shadow-[0_0_12px_rgba(255,184,0,0.2)]'
+                  : 'bg-[#151515] text-[#8E8982] border-[#333333] hover:text-[#F4F0E8]'
+              }`}
+              title="Toggle Gemini AI Qualification Engine (Turn OFF to bypass if Gemini credits are exhausted)"
+            >
+              <Sparkle size={14} className={useGemini ? 'text-[#FFB800] animate-pulse' : 'text-[#8E8982]'} />
+              <span>GEMINI AI POWER: {useGemini ? 'ENABLED' : 'OFF (BYPASS)'}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -232,7 +247,7 @@ export function LeadSourceSearch() {
         activeCoords={locationCoords}
         onSelectLocation={(locName) => {
           setLocation(locName);
-          search(query, locName, selectedProviders);
+          search(query, locName, selectedProviders, useGemini);
         }}
       />
 

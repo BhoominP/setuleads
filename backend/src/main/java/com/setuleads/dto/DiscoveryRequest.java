@@ -14,6 +14,7 @@ public class DiscoveryRequest {
     private List<String> sources; // ["GOOGLE_PLACES", "OPENSTREETMAP", "SOCIAL_XRAY"]
 
     private boolean debug;
+    private Boolean useGemini = true;
 
     public String getQuery() {
         return query;
@@ -45,5 +46,13 @@ public class DiscoveryRequest {
 
     public void setDebug(boolean debug) {
         this.debug = debug;
+    }
+
+    public Boolean getUseGemini() {
+        return useGemini != null ? useGemini : true;
+    }
+
+    public void setUseGemini(Boolean useGemini) {
+        this.useGemini = useGemini;
     }
 }

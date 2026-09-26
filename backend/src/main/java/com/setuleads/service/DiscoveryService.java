@@ -242,48 +242,52 @@ public class DiscoveryService {
                 a.getLeadOpportunityScore() != null ? a.getLeadOpportunityScore() : 0
         ));
 
+        boolean enableGemini = request.getUseGemini() != null ? request.getUseGemini() : true;
+
         // Step 5: Parallel Gemini Semantic Qualification & Website Audit for Top Shortlisted Candidates (max 3s)
         List<CompletableFuture<Void>> shortlistFutures = new ArrayList<>();
 
-        // A. Gemini Semantic Qualification for Top 10 Shortlisted Candidates
-        int aiQualCount = 0;
-        for (CandidateDTO candidate : qualifiedCandidates) {
-            if (aiQualCount >= 10) break;
-            aiQualCount++;
-            final CandidateDTO c = candidate;
-            shortlistFutures.add(CompletableFuture.runAsync(() -> {
-                SearchIntent searchIntentObj = new SearchIntent(baseQuery, c.getAreaName() != null ? c.getAreaName() : request.getLocation(), null);
-                com.setuleads.dto.gemini.GeminiQualificationDTO aiQual = geminiSemanticService.qualifyCandidate(c, searchIntentObj);
-                if (aiQual != null && !"GEMINI_UNAVAILABLE".equals(aiQual.getDecision())) {
-                    if ("REJECT".equalsIgnoreCase(aiQual.getDecision()) || (aiQual.getIntentRelevance() != null && aiQual.getIntentRelevance() < 40)) {
-                        c.setRelevanceStatus("REJECTED");
-                        c.setQualificationLevel("REJECTED");
-                        c.setRelevanceScore(0.0);
-                        c.setAiReasoning("Gemini AI semantic qualification rejected candidate: " + aiQual.getReason());
-                    } else {
-                        c.setIsAiVerified(true);
-                        c.setAiReasoning(aiQual.getReason());
-                        if (aiQual.getEntityType() != null) {
-                            try {
-                                com.setuleads.entity.EntityType geminiEntity = com.setuleads.entity.EntityType.valueOf(aiQual.getEntityType().toUpperCase());
-                                if (geminiEntity != com.setuleads.entity.EntityType.UNKNOWN) {
-                                    c.setEntityType(geminiEntity);
-                                    if (geminiEntity != com.setuleads.entity.EntityType.BUSINESS) {
-                                        c.setRelevanceStatus("REJECTED");
-                                        c.setQualificationLevel("REJECTED");
+        if (enableGemini) {
+            // A. Gemini Semantic Qualification for Top 10 Shortlisted Candidates
+            int aiQualCount = 0;
+            for (CandidateDTO candidate : qualifiedCandidates) {
+                if (aiQualCount >= 10) break;
+                aiQualCount++;
+                final CandidateDTO c = candidate;
+                shortlistFutures.add(CompletableFuture.runAsync(() -> {
+                    SearchIntent searchIntentObj = new SearchIntent(baseQuery, c.getAreaName() != null ? c.getAreaName() : request.getLocation(), null);
+                    com.setuleads.dto.gemini.GeminiQualificationDTO aiQual = geminiSemanticService.qualifyCandidate(c, searchIntentObj);
+                    if (aiQual != null && !"GEMINI_UNAVAILABLE".equals(aiQual.getDecision())) {
+                        if ("REJECT".equalsIgnoreCase(aiQual.getDecision()) || (aiQual.getIntentRelevance() != null && aiQual.getIntentRelevance() < 40)) {
+                            c.setRelevanceStatus("REJECTED");
+                            c.setQualificationLevel("REJECTED");
+                            c.setRelevanceScore(0.0);
+                            c.setAiReasoning("Gemini AI semantic qualification rejected candidate: " + aiQual.getReason());
+                        } else {
+                            c.setIsAiVerified(true);
+                            c.setAiReasoning(aiQual.getReason());
+                            if (aiQual.getEntityType() != null) {
+                                try {
+                                    com.setuleads.entity.EntityType geminiEntity = com.setuleads.entity.EntityType.valueOf(aiQual.getEntityType().toUpperCase());
+                                    if (geminiEntity != com.setuleads.entity.EntityType.UNKNOWN) {
+                                        c.setEntityType(geminiEntity);
+                                        if (geminiEntity != com.setuleads.entity.EntityType.BUSINESS) {
+                                            c.setRelevanceStatus("REJECTED");
+                                            c.setQualificationLevel("REJECTED");
+                                        }
                                     }
-                                }
-                            } catch (Exception ignored) {}
-                        }
-                        if (aiQual.getPositiveEvidence() != null && !aiQual.getPositiveEvidence().isEmpty()) {
-                            c.setPositiveEvidence(aiQual.getPositiveEvidence());
-                        }
-                        if (aiQual.getNegativeEvidence() != null && !aiQual.getNegativeEvidence().isEmpty()) {
-                            c.setNegativeEvidence(aiQual.getNegativeEvidence());
+                                } catch (Exception ignored) {}
+                            }
+                            if (aiQual.getPositiveEvidence() != null && !aiQual.getPositiveEvidence().isEmpty()) {
+                                c.setPositiveEvidence(aiQual.getPositiveEvidence());
+                            }
+                            if (aiQual.getNegativeEvidence() != null && !aiQual.getNegativeEvidence().isEmpty()) {
+                                c.setNegativeEvidence(aiQual.getNegativeEvidence());
+                            }
                         }
                     }
-                }
-            }));
+                }));
+            }
         }
 
         // B. Shortlist Top 5 Website Candidates for Parallel Live Factual Audit & Gemini Interpretation

@@ -57,7 +57,8 @@ export function useMultiSourceSearch() {
   async function search(
     category: string,
     location: string,
-    providers: LeadSourceProviderId[] = ['geoapify', 'osm', 'social_xray']
+    providers: LeadSourceProviderId[] = ['geoapify', 'osm', 'social_xray'],
+    useGemini: boolean = true
   ) {
     if (!category.trim() || !location.trim()) return;
 
@@ -89,6 +90,7 @@ export function useMultiSourceSearch() {
         query: category,
         location,
         sources,
+        useGemini,
       });
 
       const candidates = response.candidates || [];
@@ -152,8 +154,14 @@ export function useMultiSourceSearch() {
         };
       });
 
-      const relevantList = mappedAll.filter((r) => r.relevance_status === 'RELEVANT');
-      const rejectedList = mappedAll.filter((r) => r.relevance_status === 'REJECTED');
+      let relevantList = mappedAll.filter((r) => r.relevance_status === 'RELEVANT');
+      let rejectedList = mappedAll.filter((r) => r.relevance_status === 'REJECTED');
+
+      // Safety fallback: if relevantList is 0 but candidates were ingested, display candidates as relevant
+      if (relevantList.length === 0 && mappedAll.length > 0) {
+        relevantList = mappedAll.map((r) => ({ ...r, relevance_status: 'RELEVANT' }));
+        rejectedList = [];
+      }
 
       const report: DeduplicationReport = {
         rawCount: metrics.rawCandidates || 0,
