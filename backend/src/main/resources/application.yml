@@ -17,11 +17,11 @@ spring:
     show-sql: false
 
 geoapify:
-  api-key: ${GEOAPIFY_API_KEY:}
+  api-key: ${GEOAPIFY_API_KEY}
 
 gemini:
   enabled: ${GEMINI_ENABLED:true}
-  api-key: ${GEMINI_API_KEY:}
+  api-key: ${GEMINI_API_KEY}
   model: ${GEMINI_MODEL:gemini-2.5-flash}
   temperature: 0.2
   max-output-tokens: 2048

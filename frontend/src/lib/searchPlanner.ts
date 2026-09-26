@@ -42,17 +42,16 @@ export function planSearchQueries(userCategory: string): SearchPlan {
     }
   }
 
-  // Fallback: If not in dictionary, generate 2 controlled variations
-  const words = cleaned.split(/\s+/).filter(Boolean);
-  if (words.length === 1) {
-    return {
-      originalCategory: userCategory,
-      expandedQueries: [cleaned, `${cleaned} company`],
-    };
-  }
+  // Generic Query Expansion Fallback for unmatched categories:
+  // Generate: <query>, <query> shop, <query> store, <query> services, <query> company
+  const expansions = [cleaned];
+  if (!cleaned.includes('shop')) expansions.push(`${cleaned} shop`);
+  if (!cleaned.includes('store')) expansions.push(`${cleaned} store`);
+  if (!cleaned.includes('service')) expansions.push(`${cleaned} services`);
+  if (!cleaned.includes('company')) expansions.push(`${cleaned} company`);
 
   return {
     originalCategory: userCategory,
-    expandedQueries: [cleaned],
+    expandedQueries: expansions,
   };
 }

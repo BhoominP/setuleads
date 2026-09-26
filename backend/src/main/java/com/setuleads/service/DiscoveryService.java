@@ -6,7 +6,6 @@ import com.setuleads.dto.DiscoveryResponse;
 import com.setuleads.dto.MetricsDTO;
 import com.setuleads.integration.geoapify.GeoapifyClient;
 import com.setuleads.integration.osm.OsmClient;
-import com.setuleads.integration.xray.SocialXRayClient;
 import com.setuleads.service.intent.SearchIntent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +22,6 @@ public class DiscoveryService {
 
     private final GeoapifyClient geoapifyClient;
     private final OsmClient osmClient;
-    private final SocialXRayClient socialXRayClient;
     private final RelevanceQualifier relevanceQualifier;
     private final IdentityValidator identityValidator;
     private final ContactabilityEngine contactabilityEngine;
@@ -31,7 +29,6 @@ public class DiscoveryService {
     private final com.setuleads.service.gemini.GeminiSemanticService geminiSemanticService;
 
     public DiscoveryService(GeoapifyClient geoapifyClient, OsmClient osmClient,
-                            SocialXRayClient socialXRayClient,
                             RelevanceQualifier relevanceQualifier,
                             IdentityValidator identityValidator,
                             ContactabilityEngine contactabilityEngine,
@@ -39,7 +36,6 @@ public class DiscoveryService {
                             com.setuleads.service.gemini.GeminiSemanticService geminiSemanticService) {
         this.geoapifyClient = geoapifyClient;
         this.osmClient = osmClient;
-        this.socialXRayClient = socialXRayClient;
         this.relevanceQualifier = relevanceQualifier;
         this.identityValidator = identityValidator;
         this.contactabilityEngine = contactabilityEngine;
@@ -54,7 +50,7 @@ public class DiscoveryService {
 
         List<String> sources = request.getSources() != null && !request.getSources().isEmpty()
                 ? request.getSources()
-                : Arrays.asList("GEOAPIFY", "OPENSTREETMAP", "OSM", "SOCIAL_XRAY");
+                : Arrays.asList("GEOAPIFY", "OPENSTREETMAP", "OSM");
 
         logger.info("DISCOVERY SERVICE: starting search for query='{}', location='{}', sources={}, debug={}", baseQuery, location, sources, isDebug);
 
@@ -63,35 +59,35 @@ public class DiscoveryService {
         List<CandidateDTO> rawCandidates = new ArrayList<>();
         int geoapifyCount = 0;
         int osmCount = 0;
-        int socialXrayCount = 0;
         int geoapifyRequestsTotal = 0;
         int osmPassesTotal = 0;
         int queriesExecuted = 1;
 
         String geoapifyStatus = "NOT_ATTEMPTED";
         String osmStatus = "NOT_ATTEMPTED";
-        String socialXrayStatus = "NOT_ATTEMPTED";
         String overtureStatus = "NOT_ENABLED";
 
         Map<String, Object> debugInfoMap = new LinkedHashMap<>();
 
         boolean runGeoapify = sources.contains("GEOAPIFY") || sources.contains("GOOGLE_PLACES");
         boolean runOsm = sources.contains("OPENSTREETMAP") || sources.contains("OSM");
-        boolean runSocialXray = sources.contains("SOCIAL_XRAY") || sources.contains("WEB_DORK");
 
-        CompletableFuture<List<CandidateDTO>> geoapifyFuture = CompletableFuture.supplyAsync(() -> {
-            List<CandidateDTO> list = new ArrayList<>();
-            if (!runGeoapify) return list;
-            int count = 0;
+        CompletableFuture<GeoapifyClient.GeoapifySearchResult> geoapifyFuture = CompletableFuture.supplyAsync(() -> {
+            if (!runGeoapify) return new GeoapifyClient.GeoapifySearchResult(Collections.emptyList(), 0, "NOT_ATTEMPTED");
+            List<CandidateDTO> combined = new ArrayList<>();
+            int totalReqs = 0;
+            String lastStatus = "SUCCESS_ZERO_RESULTS";
             for (String q : expandedTerms) {
                 GeoapifyClient.GeoapifySearchResult geoRes = geoapifyClient.searchPlacesGrid(q, location, location);
+                totalReqs += geoRes.requestsCount;
+                lastStatus = geoRes.status;
                 if (!geoRes.candidates.isEmpty()) {
-                    list.addAll(geoRes.candidates);
-                    count += geoRes.candidates.size();
+                    combined.addAll(geoRes.candidates);
                 }
-                if (count >= 100) break;
+                if (combined.size() >= 100) break;
             }
-            return list;
+            String finalStatus = !combined.isEmpty() ? "SUCCESS_WITH_RESULTS" : lastStatus;
+            return new GeoapifyClient.GeoapifySearchResult(combined, totalReqs, finalStatus);
         });
 
         CompletableFuture<OsmClient.OsmSearchResult> osmFuture = CompletableFuture.supplyAsync(() -> {
@@ -99,13 +95,8 @@ public class DiscoveryService {
             return osmClient.searchOsm(baseQuery, location, location);
         });
 
-        CompletableFuture<SocialXRayClient.SocialXRaySearchResult> socialXrayFuture = CompletableFuture.supplyAsync(() -> {
-            if (!runSocialXray) return new SocialXRayClient.SocialXRaySearchResult(Collections.emptyList(), 0, "NOT_ATTEMPTED", Collections.emptyMap(), Collections.emptyMap());
-            return socialXRayClient.searchSocialXRay(baseQuery, location, isDebug);
-        });
-
         try {
-            CompletableFuture.allOf(geoapifyFuture, osmFuture, socialXrayFuture)
+            CompletableFuture.allOf(geoapifyFuture, osmFuture)
                     .get(22, java.util.concurrent.TimeUnit.SECONDS);
         } catch (java.util.concurrent.TimeoutException te) {
             logger.warn("Parallel discovery search timed out after 22 seconds; compiling available provider results");
@@ -113,15 +104,15 @@ public class DiscoveryService {
             logger.warn("Parallel discovery search error: {}", e.getMessage());
         }
 
-        List<CandidateDTO> geoCandidates = geoapifyFuture.getNow(Collections.emptyList());
-        if (!geoCandidates.isEmpty()) {
-            rawCandidates.addAll(geoCandidates);
-            geoapifyCount = geoCandidates.size();
+        GeoapifyClient.GeoapifySearchResult geoRes = geoapifyFuture.getNow(
+                new GeoapifyClient.GeoapifySearchResult(Collections.emptyList(), 0, "API Request timed out after 22 seconds"));
+        geoapifyRequestsTotal = geoRes.requestsCount;
+        if (!geoRes.candidates.isEmpty()) {
+            rawCandidates.addAll(geoRes.candidates);
+            geoapifyCount = geoRes.candidates.size();
             geoapifyStatus = "SUCCESS_WITH_RESULTS";
-            geoapifyRequestsTotal = 1;
-        } else if (runGeoapify) {
-            geoapifyStatus = geoapifyFuture.isDone() && !geoapifyFuture.isCompletedExceptionally()
-                    ? "SUCCESS_ZERO_RESULTS" : "API Request timed out after 22 seconds";
+        } else {
+            geoapifyStatus = geoRes.status.startsWith("SUCCESS") ? "SUCCESS_ZERO_RESULTS" : geoRes.status;
         }
 
         OsmClient.OsmSearchResult osmRes = osmFuture.getNow(
@@ -135,18 +126,14 @@ public class DiscoveryService {
             osmStatus = osmRes.status.startsWith("SUCCESS") ? "SUCCESS_ZERO_RESULTS" : osmRes.status;
         }
 
-        SocialXRayClient.SocialXRaySearchResult xrayRes = socialXrayFuture.getNow(
-                new SocialXRayClient.SocialXRaySearchResult(Collections.emptyList(), 0, "API Request timed out after 22 seconds", Collections.emptyMap(), Collections.emptyMap()));
-        if (!xrayRes.candidates.isEmpty()) {
-            rawCandidates.addAll(xrayRes.candidates);
-            socialXrayCount = xrayRes.candidates.size();
-            socialXrayStatus = "SUCCESS_WITH_RESULTS";
-        } else if (runSocialXray) {
-            socialXrayStatus = xrayRes.status;
-        }
-
-        if (xrayRes.debugInfo != null && !xrayRes.debugInfo.isEmpty()) {
-            debugInfoMap.put("socialXRay", xrayRes.debugInfo);
+        // Structural Validation Gate: Hard coordinates & provider allowlist filtering BEFORE deduplication or relevance scoring
+        int beforeStructural = rawCandidates.size();
+        rawCandidates.removeIf(c -> !isStructurallyValidBusinessCandidate(c));
+        int droppedStructural = beforeStructural - rawCandidates.size();
+        if (droppedStructural > 0) {
+            logger.warn("STRUCTURAL_REJECTED: {} candidates lacked coordinates or a valid provider", droppedStructural);
+        } else {
+            logger.info("STRUCTURAL_VALIDATION: all {} raw candidates passed coordinate & provider validation", rawCandidates.size());
         }
 
         // Provider-aware Deduplication & Normalization
@@ -164,7 +151,7 @@ public class DiscoveryService {
         int linktreeCount = 0;
         int facebookCount = 0;
 
-        List<CandidateDTO> qualifiedCandidates = new ArrayList<>();
+        List<CandidateDTO> allCandidates = new ArrayList<>();
 
         for (CandidateDTO candidate : dedupResult.uniqueCandidates) {
             // Track Social Platform Breakdown
@@ -228,19 +215,13 @@ public class DiscoveryService {
             candidate.setRelevanceReasons(qual.relevanceReasons);
             candidate.setRejectionReasons(qual.rejectionReasons);
 
+            allCandidates.add(candidate);
             if ("RELEVANT".equals(qual.status) && candidate.getEntityType() == com.setuleads.entity.EntityType.BUSINESS) {
                 relevantCount++;
-                qualifiedCandidates.add(candidate);
             } else {
                 rejectedCount++;
             }
         }
-
-        // Sort qualified candidates by composite score descending
-        qualifiedCandidates.sort((a, b) -> Integer.compare(
-                b.getLeadOpportunityScore() != null ? b.getLeadOpportunityScore() : 0,
-                a.getLeadOpportunityScore() != null ? a.getLeadOpportunityScore() : 0
-        ));
 
         boolean enableGemini = request.getUseGemini() != null ? request.getUseGemini() : true;
 
@@ -250,7 +231,8 @@ public class DiscoveryService {
         if (enableGemini) {
             // A. Gemini Semantic Qualification for Top 10 Shortlisted Candidates
             int aiQualCount = 0;
-            for (CandidateDTO candidate : qualifiedCandidates) {
+            for (CandidateDTO candidate : allCandidates) {
+                if ("REJECTED".equals(candidate.getRelevanceStatus()) || candidate.getEntityType() != com.setuleads.entity.EntityType.BUSINESS) continue;
                 if (aiQualCount >= 10) break;
                 aiQualCount++;
                 final CandidateDTO c = candidate;
@@ -263,6 +245,8 @@ public class DiscoveryService {
                             c.setQualificationLevel("REJECTED");
                             c.setRelevanceScore(0.0);
                             c.setAiReasoning("Gemini AI semantic qualification rejected candidate: " + aiQual.getReason());
+                            if (c.getRejectionReasons() == null) c.setRejectionReasons(new ArrayList<>());
+                            c.getRejectionReasons().add("Gemini AI semantic qualification rejected candidate: " + aiQual.getReason());
                         } else {
                             c.setIsAiVerified(true);
                             c.setAiReasoning(aiQual.getReason());
@@ -274,6 +258,8 @@ public class DiscoveryService {
                                         if (geminiEntity != com.setuleads.entity.EntityType.BUSINESS) {
                                             c.setRelevanceStatus("REJECTED");
                                             c.setQualificationLevel("REJECTED");
+                                            if (c.getRejectionReasons() == null) c.setRejectionReasons(new ArrayList<>());
+                                            c.getRejectionReasons().add("Gemini identified non-business entity type: " + geminiEntity);
                                         }
                                     }
                                 } catch (Exception ignored) {}
@@ -292,8 +278,8 @@ public class DiscoveryService {
 
         // B. Shortlist Top 5 Website Candidates for Parallel Live Factual Audit & Gemini Interpretation
         int auditedCount = 0;
-        for (CandidateDTO c : qualifiedCandidates) {
-            if ("FOUND".equals(c.getWebsiteStatus()) && c.getWebsiteUrl() != null && auditedCount < 5) {
+        for (CandidateDTO c : allCandidates) {
+            if ("FOUND".equals(c.getWebsiteStatus()) && c.getWebsiteUrl() != null && auditedCount < 5 && !"REJECTED".equals(c.getRelevanceStatus())) {
                 auditedCount++;
                 shortlistFutures.add(CompletableFuture.runAsync(() -> {
                     com.setuleads.dto.WebsiteCheckResponse auditRes = websiteCheckService.inspectWebsite(c.getWebsiteUrl());
@@ -326,18 +312,43 @@ public class DiscoveryService {
             }
         }
 
-        // Post-AI & audit filtering: Remove any candidate rejected by Gemini or website audit re-qualification
-        qualifiedCandidates.removeIf(c -> "REJECTED".equals(c.getRelevanceStatus()) || "REJECTED".equals(c.getQualificationLevel()) || c.getEntityType() != com.setuleads.entity.EntityType.BUSINESS);
+        // Calculate final counts after post-AI processing
+        long finalRelevantCount = allCandidates.stream()
+                .filter(c -> "RELEVANT".equals(c.getRelevanceStatus())
+                        && !"REJECTED".equals(c.getQualificationLevel())
+                        && c.getEntityType() == com.setuleads.entity.EntityType.BUSINESS)
+                .count();
+        long finalRejectedCount = allCandidates.size() - finalRelevantCount;
+
+        // Sort candidates so qualified surface first, rejected last, sorted by opportunity score descending
+        allCandidates.sort((a, b) -> {
+            boolean aRejected = "REJECTED".equals(a.getQualificationLevel()) || "REJECTED".equals(a.getRelevanceStatus());
+            boolean bRejected = "REJECTED".equals(b.getQualificationLevel()) || "REJECTED".equals(b.getRelevanceStatus());
+            if (aRejected != bRejected) return aRejected ? 1 : -1;
+            return Integer.compare(
+                b.getLeadOpportunityScore() != null ? b.getLeadOpportunityScore() : 0,
+                a.getLeadOpportunityScore() != null ? a.getLeadOpportunityScore() : 0
+            );
+        });
+
+        // Diagnostic log line for zero-result / candidate rejection traceability
+        logger.info("QUALIFICATION SUMMARY: {}/{} candidates rejected for query='{}' location='{}'. Sample reasons: {}",
+            finalRejectedCount, allCandidates.size(), baseQuery, request.getLocation(),
+            allCandidates.stream()
+                .filter(c -> "REJECTED".equals(c.getQualificationLevel()) || "REJECTED".equals(c.getRelevanceStatus()))
+                .limit(3)
+                .map(c -> c.getBusinessName() + ": " + (c.getRejectionReasons() != null && !c.getRejectionReasons().isEmpty() ? c.getRejectionReasons() : (c.getAiReasoning() != null ? c.getAiReasoning() : "EntityType=" + c.getEntityType())))
+                .toList());
 
         MetricsDTO metrics = new MetricsDTO();
         metrics.setGeoapifyCandidates(geoapifyCount);
         metrics.setOsmCandidates(osmCount);
-        metrics.setSocialXrayCandidates(socialXrayCount);
+        metrics.setSocialXrayCandidates(0);
         metrics.setOvertureCandidates(0);
         metrics.setRawCandidates(rawCandidates.size());
         metrics.setUniqueBusinesses(dedupResult.uniqueCandidates.size());
-        metrics.setRelevantCandidates(relevantCount);
-        metrics.setRejectedCandidates(rejectedCount);
+        metrics.setRelevantCandidates((int) finalRelevantCount);
+        metrics.setRejectedCandidates((int) finalRejectedCount);
         metrics.setPeopleDetected(peopleCount);
         metrics.setOrganizationsDetected(orgCount);
         metrics.setUnknownDetected(unknownCount);
@@ -355,26 +366,26 @@ public class DiscoveryService {
         metrics.setOvertureQueries(0);
         metrics.setGeoapifyStatus(geoapifyStatus);
         metrics.setOsmStatus(osmStatus);
-        metrics.setSocialXrayStatus(socialXrayStatus);
+        metrics.setSocialXrayStatus("NOT_ENABLED");
         metrics.setOvertureStatus(overtureStatus);
 
         DiscoveryResponse response = new DiscoveryResponse();
         response.setQuery(baseQuery);
         response.setLocation(location);
-        response.setCandidates(qualifiedCandidates);
+        response.setCandidates(allCandidates);
         response.setMetrics(metrics);
         if (isDebug) {
             response.setDebugInfo(debugInfoMap);
         }
 
         logger.info("DISCOVERY COMPLETE: raw={}, unique={}, relevant={}, rejected={}, people={}, orgs={}",
-                rawCandidates.size(), dedupResult.uniqueCandidates.size(), relevantCount, rejectedCount, peopleCount, orgCount);
+                rawCandidates.size(), dedupResult.uniqueCandidates.size(), finalRelevantCount, finalRejectedCount, peopleCount, orgCount);
 
         return response;
     }
 
     private List<String> expandQuery(String query) {
-        String lower = query.toLowerCase();
+        String lower = query.toLowerCase().trim();
         List<String> terms = new ArrayList<>();
         terms.add(query);
 
@@ -384,6 +395,14 @@ public class DiscoveryService {
             if (!terms.contains("boutique")) terms.add("boutique");
         } else if (lower.contains("bakery")) {
             if (!terms.contains("cafe")) terms.add("cafe");
+        } else {
+            // Generic query expansion fallback
+            if (!lower.contains("shop") && !lower.contains("store") && !lower.contains("service") && !lower.contains("company")) {
+                terms.add(query + " shop");
+                terms.add(query + " store");
+                terms.add(query + " services");
+                terms.add(query + " company");
+            }
         }
 
         return terms;
@@ -513,5 +532,20 @@ public class DiscoveryService {
         if (phone == null || phone.trim().isEmpty()) return null;
         String digits = phone.replaceAll("[^0-9]", "");
         return digits.length() >= 7 ? digits : null;
+    }
+
+    private boolean isStructurallyValidBusinessCandidate(CandidateDTO c) {
+        if (c == null) return false;
+
+        // A real business result MUST have coordinates from a location-based source.
+        if (c.getLatitude() == null || c.getLongitude() == null) return false;
+
+        // Hard allowlist of known location-based sources
+        Set<String> validProviders = Set.of("GEOAPIFY", "OSM", "OPENSTREETMAP");
+        if (c.getProvider() == null || !validProviders.contains(c.getProvider().toUpperCase())) {
+            return false;
+        }
+
+        return true;
     }
 }

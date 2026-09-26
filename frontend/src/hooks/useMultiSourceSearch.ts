@@ -57,7 +57,7 @@ export function useMultiSourceSearch() {
   async function search(
     category: string,
     location: string,
-    providers: LeadSourceProviderId[] = ['geoapify', 'osm', 'social_xray'],
+    providers: LeadSourceProviderId[] = ['geoapify', 'osm'],
     useGemini: boolean = true
   ) {
     if (!category.trim() || !location.trim()) return;
@@ -141,6 +141,8 @@ export function useMultiSourceSearch() {
           website_issues: c.websiteIssues || [],
           positive_evidence: c.positiveEvidence || [],
           negative_evidence: c.negativeEvidence || [],
+          matched_signals: c.matchedSignals || [],
+          negative_signals: c.negativeSignals || [],
           identity_confidence: c.identityConfidence ? Math.round(c.identityConfidence * 100) : 90,
           evidence_confidence: c.evidenceConfidence ? Math.round(c.evidenceConfidence * 100) : 85,
           source_evidence: c.sourceEvidence || null,
@@ -154,14 +156,8 @@ export function useMultiSourceSearch() {
         };
       });
 
-      let relevantList = mappedAll.filter((r) => r.relevance_status === 'RELEVANT');
-      let rejectedList = mappedAll.filter((r) => r.relevance_status === 'REJECTED');
-
-      // Safety fallback: if relevantList is 0 but candidates were ingested, display candidates as relevant
-      if (relevantList.length === 0 && mappedAll.length > 0) {
-        relevantList = mappedAll.map((r) => ({ ...r, relevance_status: 'RELEVANT' }));
-        rejectedList = [];
-      }
+      const relevantList = mappedAll.filter((r) => r.relevance_status === 'RELEVANT' && r.qualification_level !== 'REJECTED');
+      const rejectedList = mappedAll.filter((r) => r.relevance_status === 'REJECTED' || r.qualification_level === 'REJECTED');
 
       const report: DeduplicationReport = {
         rawCount: metrics.rawCandidates || 0,
@@ -200,11 +196,11 @@ export function useMultiSourceSearch() {
         deduplicationAfter: metrics.uniqueBusinesses || 0,
       };
 
-      const geoapifyStatus = metrics.geoapifyStatus && (metrics.geoapifyStatus.startsWith('HTTP_ERROR') || metrics.geoapifyStatus.startsWith('ERROR')) ? 'failed' : 'completed';
-      const osmStatus = metrics.osmStatus && (metrics.osmStatus.startsWith('HTTP_ERROR') || metrics.osmStatus.startsWith('ERROR') || metrics.osmStatus.startsWith('OVERPASS')) ? 'failed' : 'completed';
+      const geoapifyStatus = metrics.geoapifyStatus && (metrics.geoapifyStatus.startsWith('SUCCESS') || metrics.geoapifyStatus === 'NOT_ATTEMPTED') ? 'completed' : 'failed';
+      const osmStatus = metrics.osmStatus && (metrics.osmStatus.startsWith('SUCCESS') || metrics.osmStatus === 'NOT_ATTEMPTED') ? 'completed' : 'failed';
       const overtureStatus = metrics.overtureStatus || 'disabled';
 
-      setResults(relevantList);
+      setResults(mappedAll);
       setRejectedResults(rejectedList);
 
       setEngineState({

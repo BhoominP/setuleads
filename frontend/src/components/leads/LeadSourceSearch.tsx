@@ -33,14 +33,25 @@ export function LeadSourceSearch() {
   const [selectedProviders, setSelectedProviders] = useState<LeadSourceProviderId[]>([
     'geoapify',
     'osm',
-    'social_xray',
   ]);
   const [useGemini, setUseGemini] = useState(true);
   const [importing, setImporting] = useState<string | null>(null);
   const [imported, setImported] = useState<Set<string>>(new Set());
   const [isClipboardModalOpen, setIsClipboardModalOpen] = useState(false);
+  const [tierFilter, setTierFilter] = useState<'QUALIFIED' | 'ALL' | 'HOT' | 'HIGH' | 'POTENTIAL' | 'LOW' | 'REJECTED'>('QUALIFIED');
 
   const { results, loading, engineState, error, search } = useMultiSourceSearch();
+
+  const rejectedCount = results.filter((r) => r.qualification_level === 'REJECTED' || r.relevance_status === 'REJECTED').length;
+  const qualifiedCount = results.length - rejectedCount;
+
+  const filteredResults = results.filter((r) => {
+    const isRejected = r.qualification_level === 'REJECTED' || r.relevance_status === 'REJECTED';
+    if (tierFilter === 'QUALIFIED') return !isRejected;
+    if (tierFilter === 'REJECTED') return isRejected;
+    if (tierFilter === 'ALL') return true;
+    return (r.qualification_level || '').toUpperCase() === tierFilter;
+  });
   const addLeadMutation = useAddLead();
 
   function toggleProvider(provider: LeadSourceProviderId) {
@@ -209,19 +220,6 @@ export function LeadSourceSearch() {
             >
               <span className={`w-1.5 h-1.5 rounded-full ${selectedProviders.includes('osm') ? 'bg-[#00E599] animate-pulse' : 'bg-[#8E8982]'}`} />
               OpenStreetMap (OSM)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => toggleProvider('social_xray')}
-              className={`font-mono text-xs px-3 py-1 border transition-all flex items-center gap-2 uppercase tracking-wider ${
-                selectedProviders.includes('social_xray')
-                  ? 'bg-[#151515] text-[#F4F0E8] border-[#FF4A00] font-bold shadow-[0_0_10px_rgba(255,74,0,0.12)]'
-                  : 'text-[#8E8982] border-transparent hover:text-[#F4F0E8]'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${selectedProviders.includes('social_xray') ? 'bg-[#FF4A00] animate-pulse' : 'bg-[#8E8982]'}`} />
-              Social X-Ray
             </button>
 
             <button
@@ -512,26 +510,180 @@ export function LeadSourceSearch() {
               <span>GEOLOCATION & RELEVANCE VERIFIED</span>
             </div>
           </div>
+
+          {/* Provider Ingestion Status Diagnostics */}
+          <div className="pt-3 border-t border-[#222222] space-y-2 relative z-10">
+            <div className="flex items-center justify-between text-[10px] font-mono text-[#8E8982] uppercase tracking-wider">
+              <span className="font-bold text-[#F4F0E8] flex items-center gap-1.5">
+                <Broadcast size={13} className="text-[#FF4A00]" />
+                PROVIDER INGESTION STATUS DIAGNOSTICS
+              </span>
+              {engineState.report.rawCount === 0 && (
+                <span className="text-[#FF4A00] font-bold animate-pulse">
+                  ⚠️ ZERO RAW SIGNALS DISCOVERED — INSPECT PROVIDER STATUS BELOW
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+              {/* Geoapify Status Box */}
+              <div className={`p-2.5 border bg-[#080808] flex items-start justify-between gap-2 ${
+                engineState.providerStatus.geoapify === 'failed'
+                  ? 'border-red-500/60 text-red-300 bg-red-950/20'
+                  : 'border-[#222222] text-[#F4F0E8]'
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2 font-bold uppercase text-[11px]">
+                    <span className={`w-2 h-2 rounded-full ${
+                      engineState.providerStatus.geoapify === 'failed' ? 'bg-red-500' : 'bg-[#FF4A00]'
+                    }`} />
+                    GEOAPIFY PLACES API
+                  </div>
+                  <div className="text-[10px] text-[#8E8982] mt-1 break-all">
+                    Status: <span className={engineState.providerStatus.geoapify === 'failed' ? 'text-red-400 font-bold' : 'text-[#00E599]'}>
+                      {engineState.providerStatus.geoapifyMessage || engineState.providerStatus.geoapify}
+                    </span>
+                  </div>
+                </div>
+                <Badge className={`text-[9px] uppercase font-bold rounded-none px-1.5 py-0.5 border shrink-0 ${
+                  engineState.providerStatus.geoapify === 'failed'
+                    ? 'bg-red-500/20 text-red-400 border-red-500/50'
+                    : 'bg-[#FF4A00]/15 text-[#FF4A00] border-[#FF4A00]/40'
+                }`}>
+                  {engineState.providerStatus.geoapify === 'failed' ? 'FAILED / ERROR' : 'SUCCESS'}
+                </Badge>
+              </div>
+
+              {/* OSM Status Box */}
+              <div className={`p-2.5 border bg-[#080808] flex items-start justify-between gap-2 ${
+                engineState.providerStatus.osm === 'failed'
+                  ? 'border-red-500/60 text-red-300 bg-red-950/20'
+                  : 'border-[#222222] text-[#F4F0E8]'
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2 font-bold uppercase text-[11px]">
+                    <span className={`w-2 h-2 rounded-full ${
+                      engineState.providerStatus.osm === 'failed' ? 'bg-red-500' : 'bg-[#00E599]'
+                    }`} />
+                    OPENSTREETMAP (OSM)
+                  </div>
+                  <div className="text-[10px] text-[#8E8982] mt-1 break-all">
+                    Status: <span className={engineState.providerStatus.osm === 'failed' ? 'text-red-400 font-bold' : 'text-[#00E599]'}>
+                      {engineState.providerStatus.osmMessage || engineState.providerStatus.osm}
+                    </span>
+                  </div>
+                </div>
+                <Badge className={`text-[9px] uppercase font-bold rounded-none px-1.5 py-0.5 border shrink-0 ${
+                  engineState.providerStatus.osm === 'failed'
+                    ? 'bg-red-500/20 text-red-400 border-red-500/50'
+                    : 'bg-[#00E599]/15 text-[#00E599] border-[#00E599]/40'
+                }`}>
+                  {engineState.providerStatus.osm === 'failed' ? 'FAILED / ERROR' : 'SUCCESS'}
+                </Badge>
+              </div>
+            </div>
+          </div>
         </motion.div>
       )}
 
       {/* Discovered Candidates Grid (Staggered Animations) */}
       {results.length > 0 && (
         <div className="space-y-4 pt-4 border-t border-[#222222]">
-          <div className="flex items-center justify-between">
+          {/* Diagnostic Banner when 0 candidates qualified */}
+          {qualifiedCount === 0 && rejectedCount > 0 && (
+            <div className="bg-[#180A0A] border border-[#FF4A00]/60 p-4 font-mono text-xs text-[#F4F0E8] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_0_15px_rgba(255,74,0,0.15)]">
+              <div className="flex items-center gap-2.5 text-[#FF4A00]">
+                <WarningOctagon size={22} className="shrink-0 animate-pulse text-[#FF4A00]" />
+                <div>
+                  <span className="font-bold uppercase tracking-wider block text-xs text-[#FF4A00]">
+                    QUALIFICATION DIAGNOSTIC: {rejectedCount} CANDIDATES DISCOVERED, 0 QUALIFIED
+                  </span>
+                  <span className="text-[11px] text-[#8E8982]">
+                    All harvested candidates were flagged by qualification filters. Inspect specific rejection reasons below to verify rules.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTierFilter('REJECTED')}
+                className="btn-editorial text-xs font-mono font-bold uppercase tracking-wider py-1.5 px-4 shrink-0 bg-[#FF4A00] text-[#080808]"
+              >
+                SHOW {rejectedCount} REJECTED CANDIDATES →
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h2 className="font-display text-sm uppercase tracking-widest text-[#FF4A00] font-bold">
-              DISCOVERED PROSPECTS ({results.length} CANDIDATES QUALIFIED)
+              DISCOVERED PROSPECTS ({filteredResults.length} / {results.length} SHOWN)
             </h2>
-            <span className="font-mono text-[10px] text-[#8E8982]">
-              FACTUAL AUDIT & GEMINI QUALIFIED
-            </span>
+            <div className="flex items-center gap-1 font-mono text-xs flex-wrap">
+              <span className="text-[#8E8982] uppercase text-[10px] tracking-wider mr-1">Tier:</span>
+              <button
+                type="button"
+                onClick={() => setTierFilter('QUALIFIED')}
+                className={`px-2 py-0.5 border text-[10px] font-bold tracking-wider uppercase transition-all ${
+                  tierFilter === 'QUALIFIED'
+                    ? 'bg-[#FF4A00] text-[#080808] border-[#FF4A00]'
+                    : 'bg-[#151515] text-[#8E8982] border-[#222222] hover:text-[#F4F0E8]'
+                }`}
+              >
+                QUALIFIED ({qualifiedCount})
+              </button>
+              {(['HOT', 'HIGH', 'POTENTIAL', 'LOW'] as const).map((tier) => (
+                <button
+                  key={tier}
+                  type="button"
+                  onClick={() => setTierFilter(tier)}
+                  className={`px-2 py-0.5 border text-[10px] font-bold tracking-wider uppercase transition-all ${
+                    tierFilter === tier
+                      ? 'bg-[#FF4A00] text-[#080808] border-[#FF4A00]'
+                      : 'bg-[#151515] text-[#8E8982] border-[#222222] hover:text-[#F4F0E8]'
+                  }`}
+                >
+                  {tier}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setTierFilter('REJECTED')}
+                className={`px-2 py-0.5 border text-[10px] font-bold tracking-wider uppercase transition-all ${
+                  tierFilter === 'REJECTED'
+                    ? 'bg-red-500 text-white border-red-500'
+                    : 'bg-[#151515] text-red-400/80 border-[#222222] hover:text-red-300'
+                }`}
+              >
+                REJECTED ({rejectedCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTierFilter('ALL')}
+                className={`px-2 py-0.5 border text-[10px] font-bold tracking-wider uppercase transition-all ${
+                  tierFilter === 'ALL'
+                    ? 'bg-[#FF4A00] text-[#080808] border-[#FF4A00]'
+                    : 'bg-[#151515] text-[#8E8982] border-[#222222] hover:text-[#F4F0E8]'
+                }`}
+              >
+                ALL ({results.length})
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[700px] overflow-y-auto pr-1">
-            {results.map((r, index) => {
+            {filteredResults.map((r, index) => {
               const oppScore = r.lead_opportunity_score || 88;
               const webScore = r.website_opportunity_score || 82;
               const contactScore = r.contactability_score || 90;
+              const isRejected = r.qualification_level === 'REJECTED' || r.relevance_status === 'REJECTED';
+              const tier = isRejected ? 'REJECTED' : (r.qualification_level || 'HIGH').toUpperCase();
+
+              const tierBadgeColors: Record<string, string> = {
+                HOT: 'bg-[#FF4A00]/20 text-[#FF4A00] border-[#FF4A00]',
+                HIGH: 'bg-[#00E599]/20 text-[#00E599] border-[#00E599]',
+                POTENTIAL: 'bg-[#FFB800]/20 text-[#FFB800] border-[#FFB800]',
+                LOW: 'bg-[#8E8982]/20 text-[#8E8982] border-[#8E8982]',
+                REJECTED: 'bg-red-500/20 text-red-400 border-red-500/60',
+              };
 
               return (
                 <motion.div
@@ -539,7 +691,9 @@ export function LeadSourceSearch() {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.4) }}
-                  className="inspected-panel bg-[#101010] border border-[#222222] p-5 flex flex-col justify-between gap-4 hover:border-[#FF4A00]/50 transition-all group"
+                  className={`inspected-panel bg-[#101010] border p-5 flex flex-col justify-between gap-4 transition-all group ${
+                    isRejected ? 'border-red-950/80 opacity-90 hover:border-red-600/60' : 'border-[#222222] hover:border-[#FF4A00]/50'
+                  }`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
@@ -548,42 +702,70 @@ export function LeadSourceSearch() {
                           <h3 className="text-lg font-bold font-display text-[#F4F0E8] group-hover:text-[#FF4A00] transition-colors">
                             {r.business_name}
                           </h3>
+                          <Badge className={`text-[9px] font-mono uppercase px-1.5 py-0 border ${tierBadgeColors[tier] || tierBadgeColors.HIGH}`}>
+                            {tier} TIER
+                          </Badge>
                         </div>
                         <p className="font-mono text-xs text-[#8E8982] line-clamp-1 mt-0.5">{r.address || 'Location Verified'}</p>
                       </div>
 
                       {/* Large Editorial Score Display */}
                       <div className="text-right shrink-0">
-                        <div className="font-display text-3xl font-bold text-[#FF4A00] leading-none">
-                          {oppScore}
+                        <div className={`font-display text-3xl font-bold leading-none ${isRejected ? 'text-red-500' : 'text-[#FF4A00]'}`}>
+                          {isRejected ? 0 : oppScore}
                         </div>
                         <span className="font-mono text-[9px] uppercase tracking-widest text-[#8E8982] block mt-0.5">
-                          LEAD OPPORTUNITY
+                          {isRejected ? 'REJECTED' : 'LEAD OPPORTUNITY'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Progress Bar & Sub-Scores */}
-                    <div className="space-y-1.5 font-mono text-[10px] bg-[#151515] p-2.5 border border-[#222222]">
-                      <div className="flex items-center justify-between text-[#8E8982] mb-1">
-                        <span>WEBSITE OPPORTUNITY</span>
-                        <span className="font-bold text-[#F4F0E8]">{webScore}/100</span>
+                    {/* Rejection Diagnostics Callout Box */}
+                    {isRejected ? (
+                      <div className="bg-[#180A0A] border border-red-900/50 p-3 space-y-1.5 font-mono text-xs text-red-200">
+                        <div className="font-bold flex items-center gap-1.5 text-red-400 uppercase text-[10px] tracking-wider">
+                          <WarningOctagon size={14} className="text-red-400" /> REJECTION DIAGNOSTICS:
+                        </div>
+                        {r.rejection_reasons && r.rejection_reasons.length > 0 ? (
+                          <ul className="list-disc list-inside space-y-1 text-[11px] text-red-300">
+                            {r.rejection_reasons.map((reason, i) => (
+                              <li key={i}>{reason}</li>
+                            ))}
+                          </ul>
+                        ) : r.ai_reasoning ? (
+                          <p className="text-[11px] text-red-300">{r.ai_reasoning}</p>
+                        ) : (
+                          <p className="text-[11px] text-red-300">Category or business name contradicts query intent or entity type is non-business.</p>
+                        )}
+                        {r.negative_signals && r.negative_signals.length > 0 && (
+                          <div className="pt-1 border-t border-red-900/30 text-[10px] text-red-400/80">
+                            Signals: {r.negative_signals.join(', ')}
+                          </div>
+                        )}
                       </div>
-                      <div className="w-full bg-[#080808] h-1.5 overflow-hidden">
-                        <div 
-                          className="bg-[#FF4A00] h-full transition-all duration-500" 
-                          style={{ width: `${webScore}%` }} 
-                        />
-                      </div>
+                    ) : (
+                      /* Progress Bar & Sub-Scores for Qualified Prospects */
+                      <div className="space-y-1.5 font-mono text-[10px] bg-[#151515] p-2.5 border border-[#222222]">
+                        <div className="flex items-center justify-between text-[#8E8982] mb-1">
+                          <span>WEBSITE OPPORTUNITY</span>
+                          <span className="font-bold text-[#F4F0E8]">{webScore}/100</span>
+                        </div>
+                        <div className="w-full bg-[#080808] h-1.5 overflow-hidden">
+                          <div 
+                            className="bg-[#FF4A00] h-full transition-all duration-500" 
+                            style={{ width: `${webScore}%` }} 
+                          />
+                        </div>
 
-                      <div className="flex items-center justify-between text-[#8E8982] pt-1">
-                        <span>CONTACTABILITY</span>
-                        <span className="font-bold text-[#4E8752]">{contactScore}/100</span>
+                        <div className="flex items-center justify-between text-[#8E8982] pt-1">
+                          <span>CONTACTABILITY</span>
+                          <span className="font-bold text-[#4E8752]">{contactScore}/100</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Gemini Semantic Match Badge */}
-                    {r.is_ai_verified && (
+                    {r.is_ai_verified && !isRejected && (
                       <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#FF4A00]/10 border border-[#FF4A00]/30 font-mono text-[10px] text-[#FF4A00]">
                         <Sparkle size={12} />
                         <span>AI ANALYSIS: SEMANTIC MATCH VERIFIED</span>
@@ -615,9 +797,11 @@ export function LeadSourceSearch() {
                     </div>
 
                     {/* Why This Lead Callout */}
-                    <p className="font-mono text-[11px] text-[#CFC8BE] bg-[#151515] p-2 border-l-2 border-[#FF4A00]">
-                      ✓ {r.match_reason || r.relevance_reasons?.[0] || 'Target business with high website redesign opportunity.'}
-                    </p>
+                    {!isRejected && (
+                      <p className="font-mono text-[11px] text-[#CFC8BE] bg-[#151515] p-2 border-l-2 border-[#FF4A00]">
+                        ✓ {r.match_reason || r.relevance_reasons?.[0] || 'Target business with high website redesign opportunity.'}
+                      </p>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-[#222222] flex justify-end">

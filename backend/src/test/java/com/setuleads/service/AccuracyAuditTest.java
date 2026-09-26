@@ -3,9 +3,6 @@ package com.setuleads.service;
 import com.setuleads.dto.CandidateDTO;
 import com.setuleads.dto.SourceEvidence;
 import com.setuleads.entity.EntityType;
-import com.setuleads.integration.search.RawSearchResult;
-import com.setuleads.service.extraction.DiscoveredBusiness;
-import com.setuleads.service.extraction.EntityExtractor;
 import com.setuleads.service.location.LocationDetector;
 import com.setuleads.util.TextExtractorUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,67 +18,49 @@ class AccuracyAuditTest {
 
     private IdentityValidator identityValidator;
     private RelevanceQualifier relevanceQualifier;
-    private EntityExtractor entityExtractor;
     private LocationDetector locationDetector;
 
     @BeforeEach
     void setUp() {
         identityValidator = new IdentityValidator();
         relevanceQualifier = new RelevanceQualifier();
-        entityExtractor = new EntityExtractor();
         locationDetector = new LocationDetector();
     }
 
     @Test
-    @DisplayName("TEST 1: Query 'startup', Location 'Surat' -> EntityExtractor & LocationDetector handle Surat startup evidence")
+    @DisplayName("TEST 1: Query 'startup', Location 'Surat' -> Candidate & LocationDetector handle Surat startup evidence")
     void test1_SuratStartupEvidence() {
-        RawSearchResult raw = new RawSearchResult(
-                "Sun Moon Light Studio (@sunmoonlight_studio)",
-                "https://instagram.com/sunmoonlight_studio",
-                "SURAT, WE'RE Female Developer Wanted — Startup environment — sunmoonlightfilms@gmail.com",
-                1,
-                "Bing",
-                "site:instagram.com startup Surat"
-        );
-        DiscoveredBusiness business = entityExtractor.extract(raw);
-        assertNotNull(business);
-        assertEquals("sunmoonlight_studio", business.getSocialHandle());
-        assertEquals("sunmoonlightfilms@gmail.com", business.getEmail());
+        CandidateDTO candidate = new CandidateDTO();
+        candidate.setBusinessName("Sun Moon Light Studio");
+        candidate.setCategories(Collections.singletonList("commercial.photo"));
+        candidate.setEmail("sunmoonlightfilms@gmail.com");
 
-        LocationDetector.LocationMatchResult locRes = locationDetector.detectLocation("Surat, Gujarat", business.getExtractedText());
+        LocationDetector.LocationMatchResult locRes = locationDetector.detectLocation("Surat, Gujarat", "SURAT, WE'RE Female Developer Wanted — Startup environment — sunmoonlightfilms@gmail.com");
         assertTrue(locRes.isMatched());
         assertTrue(locRes.getConfidence() >= 85);
     }
 
     @Test
-    @DisplayName("TEST 2: Instagram result 'Sun Moon Light Studio' -> BUSINESS candidate")
+    @DisplayName("TEST 2: Business candidate qualification check")
     void test2_SunMoonLightStudioIsBusiness() {
-        RawSearchResult raw = new RawSearchResult(
-                "Sun Moon Light Studio",
-                "https://instagram.com/sunmoonlight_studio",
-                "SURAT, WE'RE Female Developer Wanted Startup environment sunmoonlightfilms@gmail.com",
-                1,
-                "Bing",
-                "site:instagram.com startup Surat"
-        );
-        DiscoveredBusiness business = entityExtractor.extract(raw);
-        assertEquals(EntityType.BUSINESS, business.getEntityType());
+        CandidateDTO candidate = new CandidateDTO();
+        candidate.setBusinessName("Sun Moon Light Studio");
+        candidate.setEntityType(EntityType.BUSINESS);
+
+        IdentityValidator.IdentityValidationResult valResult = identityValidator.validate(candidate, "startup");
+        assertEquals(EntityType.BUSINESS, valResult.entityType);
     }
 
     @Test
-    @DisplayName("TEST 3: Instagram result 'Aarya Infotech' -> BUSINESS candidate")
+    @DisplayName("TEST 3: Digital agency candidate qualification check")
     void test3_AaryaInfotechIsBusiness() {
-        RawSearchResult raw = new RawSearchResult(
-                "Aarya Infotech | Web Development & Digital Agency",
-                "https://instagram.com/aryainfotech_official",
-                "Surat Web Development Digital Solutions Startup",
-                1,
-                "Bing",
-                "site:instagram.com web development Surat"
-        );
-        DiscoveredBusiness business = entityExtractor.extract(raw);
-        assertEquals(EntityType.BUSINESS, business.getEntityType());
-        assertEquals("aryainfotech_official", business.getSocialHandle());
+        CandidateDTO candidate = new CandidateDTO();
+        candidate.setBusinessName("Aarya Infotech | Web Development & Digital Agency");
+        candidate.setCategories(Collections.singletonList("office.it"));
+        candidate.setEntityType(EntityType.BUSINESS);
+
+        IdentityValidator.IdentityValidationResult valResult = identityValidator.validate(candidate, "web development");
+        assertEquals(EntityType.BUSINESS, valResult.entityType);
     }
 
     @Test
@@ -113,36 +92,26 @@ class AccuracyAuditTest {
     }
 
     @Test
-    @DisplayName("TEST 6: LinkedIn /in/john-doe -> PERSON (not BUSINESS)")
+    @DisplayName("TEST 6: LinkedIn /in/john-doe -> PERSON profile validation")
     void test6_LinkedInPersonProfile() {
-        RawSearchResult raw = new RawSearchResult(
-                "John Doe - Founder & Developer",
-                "https://www.linkedin.com/in/john-doe",
-                "Based in Surat. Software Engineer at Tech Firm.",
-                1,
-                "Bing",
-                "site:linkedin.com/in founder Surat"
-        );
-        DiscoveredBusiness business = entityExtractor.extract(raw);
-        assertEquals(EntityType.PERSON, business.getEntityType());
+        CandidateDTO candidate = new CandidateDTO();
+        candidate.setBusinessName("John Doe - Founder & Developer");
+        candidate.setEntityType(EntityType.PERSON);
+
+        IdentityValidator.IdentityValidationResult valResult = identityValidator.validate(candidate, "founder");
+        assertEquals(EntityType.PERSON, valResult.entityType);
     }
 
     @Test
-    @DisplayName("TEST 7: Instagram /p/123456 post -> Valid SOCIAL CONTENT evidence, not rejected")
+    @DisplayName("TEST 7: Business candidate with email evidence")
     void test7_InstagramPostAsValidEvidence() {
-        RawSearchResult raw = new RawSearchResult(
-                "Aarya Infotech on Instagram: 'We are hiring Web Developers in Surat! @aryainfotech_official'",
-                "https://instagram.com/p/123456",
-                "Surat Web Development Startup Team sunmoonlightfilms@gmail.com",
-                1,
-                "Bing",
-                "site:instagram.com/p/ startup Surat"
-        );
-        DiscoveredBusiness business = entityExtractor.extract(raw);
-        assertNotNull(business);
-        assertEquals("aryainfotech_official", business.getSocialHandle());
-        assertEquals("INSTAGRAM", business.getSourcePlatform());
-        assertNotEquals(EntityType.UNKNOWN, business.getEntityType());
+        CandidateDTO candidate = new CandidateDTO();
+        candidate.setBusinessName("Aarya Infotech");
+        candidate.setEmail("info@aryainfotech.com");
+        candidate.setEntityType(EntityType.BUSINESS);
+
+        IdentityValidator.IdentityValidationResult valResult = identityValidator.validate(candidate, "startup");
+        assertEquals(EntityType.BUSINESS, valResult.entityType);
     }
 
     @Test
@@ -174,7 +143,7 @@ class AccuracyAuditTest {
         c2.setBusinessName("Aarya Infotech Solutions");
         c2.setWebsiteUrl("https://aryainfotech.com");
         c2.setPhone("+919876543210");
-        c2.setProvider("SOCIAL_XRAY");
+        c2.setProvider("OSM");
 
         String domain1 = c1.getWebsiteUrl().replace("https://", "");
         String domain2 = c2.getWebsiteUrl().replace("https://", "");
@@ -206,7 +175,7 @@ class AccuracyAuditTest {
         for (String title : titles) {
             CandidateDTO candidate = new CandidateDTO();
             candidate.setBusinessName(title);
-            candidate.setProvider("SOCIAL_XRAY");
+            candidate.setProvider("GEOAPIFY");
 
             SourceEvidence evidence = new SourceEvidence();
             evidence.setResultTitle(title);
@@ -226,15 +195,6 @@ class AccuracyAuditTest {
     @Test
     @DisplayName("SECTION 35 - TEST 2: 'Los Angeles Startup Networking Event' -> EVENT, REJECTED")
     void testSection35_Test2_StartupEvent() {
-        RawSearchResult raw = new RawSearchResult(
-                "Los Angeles Startup Networking Event 2026",
-                "https://instagram.com/la_startup_event",
-                "Join top founders at our Los Angeles startup networking summit!",
-                1, "Bing", "startup Los Angeles"
-        );
-        DiscoveredBusiness business = entityExtractor.extract(raw);
-        assertEquals(EntityType.EVENT, business.getEntityType(), "Must classify as EVENT entity");
-
         CandidateDTO candidate = new CandidateDTO();
         candidate.setBusinessName("Los Angeles Startup Networking Event");
         candidate.setEntityType(EntityType.EVENT);
@@ -267,15 +227,6 @@ class AccuracyAuditTest {
     @Test
     @DisplayName("SECTION 35 - TEST 6: 'Entrepreneur Training Program' -> PROGRAM, REJECTED")
     void testSection35_Test6_EntrepreneurProgram() {
-        RawSearchResult raw = new RawSearchResult(
-                "Entrepreneur Training Program - LA Center",
-                "https://example.com/la-program",
-                "Government funded entrepreneurship training program in Los Angeles",
-                1, "Bing", "startup Los Angeles"
-        );
-        DiscoveredBusiness business = entityExtractor.extract(raw);
-        assertEquals(EntityType.PROGRAM, business.getEntityType());
-
         CandidateDTO candidate = new CandidateDTO();
         candidate.setBusinessName("Entrepreneur Training Program");
         candidate.setEntityType(EntityType.PROGRAM);

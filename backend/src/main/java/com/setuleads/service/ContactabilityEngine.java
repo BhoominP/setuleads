@@ -1,7 +1,6 @@
 package com.setuleads.service;
 
 import com.setuleads.dto.CandidateDTO;
-import com.setuleads.service.extraction.DiscoveredBusiness;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -124,24 +123,6 @@ public class ContactabilityEngine {
         candidate.setContactabilityScore(result.getScore());
         candidate.setDecisionMakerName(result.getDecisionMakerName());
         candidate.setDecisionMakerTitle(result.getDecisionMakerTitle());
-    }
-
-    public void applyTo(DiscoveredBusiness business) {
-        String text = (business.getResultTitle() != null ? business.getResultTitle() : "") + " " +
-                     (business.getSnippet() != null ? business.getSnippet() : "") + " " +
-                     (business.getDescription() != null ? business.getDescription() : "");
-        ContactabilityResult result = evaluate(
-            business.getEmail(),
-            business.getPhone(),
-            business.getWhatsapp(),
-            business.getSocialHandle(),
-            business.getSourcePlatform() != null && business.getSourcePlatform().equals("LINKEDIN") ? business.getSourceUrl() : null,
-            business.getWebsite(),
-            text
-        );
-        business.setContactabilityScore(result.getScore());
-        business.setDecisionMakerName(result.getDecisionMakerName());
-        business.setDecisionMakerTitle(result.getDecisionMakerTitle());
     }
 
     private boolean isSocialUrl(String url) {

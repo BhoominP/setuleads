@@ -69,6 +69,7 @@ public class GeoapifyClient {
 
         List<CandidateDTO> allCandidates = Collections.synchronizedList(new ArrayList<>());
         java.util.concurrent.atomic.AtomicInteger totalRequests = new java.util.concurrent.atomic.AtomicInteger(1); // 1 for geocoding
+        java.util.concurrent.atomic.AtomicReference<String> cellError = new java.util.concurrent.atomic.AtomicReference<>(null);
 
         List<java.util.concurrent.CompletableFuture<Void>> futures = new ArrayList<>();
 
@@ -82,7 +83,7 @@ public class GeoapifyClient {
                     String categories = mapQueryToCategories(query);
                     UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(PLACES_URL)
                             .queryParam("apiKey", apiKey)
-                            .queryParam("limit", 50);
+                            .queryParam("limit", 200);
 
                     if (categories != null && !categories.isEmpty()) {
                         builder.queryParam("categories", categories);
@@ -109,8 +110,14 @@ public class GeoapifyClient {
                                 }
                             }
                         }
+                    } else {
+                        cellError.set("HTTP_" + response.getStatusCode().value());
                     }
+                } catch (HttpStatusCodeException ex) {
+                    cellError.set("HTTP_ERROR_" + ex.getStatusCode().value() + ": " + ex.getResponseBodyAsString());
+                    logger.warn("Geoapify Grid Cell {} HTTP error: {}", cellIndex, ex.getMessage());
                 } catch (Exception ex) {
+                    cellError.set("ERROR: " + ex.getMessage());
                     logger.warn("Geoapify Grid Cell {} error: {}", cellIndex, ex.getMessage());
                 }
             }));
@@ -124,7 +131,16 @@ public class GeoapifyClient {
 
         logger.info("GEOAPIFY GRID SEARCH: harvested {} raw candidates across {} cells", allCandidates.size(), gridPoints.length);
 
-        return new GeoapifySearchResult(new ArrayList<>(allCandidates), totalRequests.get(), "SUCCESS_WITH_RESULTS");
+        String status;
+        if (!allCandidates.isEmpty()) {
+            status = "SUCCESS_WITH_RESULTS";
+        } else if (cellError.get() != null) {
+            status = cellError.get();
+        } else {
+            status = "SUCCESS_ZERO_RESULTS";
+        }
+
+        return new GeoapifySearchResult(new ArrayList<>(allCandidates), totalRequests.get(), status);
     }
 
     public GeoapifySearchResult searchPlaces(String query, String location, String areaName) {
@@ -150,7 +166,7 @@ public class GeoapifyClient {
 
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(PLACES_URL)
                     .queryParam("apiKey", apiKey)
-                    .queryParam("limit", 50);
+                    .queryParam("limit", 200);
 
             if (categories != null && !categories.isEmpty()) {
                 builder.queryParam("categories", categories);
@@ -188,6 +204,7 @@ public class GeoapifyClient {
                     }
                 }
                 logger.info("GEOAPIFY SEARCH: returned {} features, mapped {} candidates", features.size(), count);
+                status = !candidates.isEmpty() ? "SUCCESS_WITH_RESULTS" : (centerAndBbox == null ? "LOCATION_GEOCODE_FAILED" : "SUCCESS_ZERO_RESULTS");
             } else {
                 status = "HTTP_" + response.getStatusCode().value();
             }

@@ -21,7 +21,7 @@ public class OsmClient {
     private static final String[] OVERPASS_URLS = {
         "https://overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+        "https://overpass.private.coffee/api/interpreter"
     };
 
     private final RestTemplate restTemplate;
@@ -33,8 +33,8 @@ public class OsmClient {
         this.objectMapper = objectMapper;
         
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(3500); // 3.5s connect timeout
-        factory.setReadTimeout(5000);    // 5s read timeout per mirror
+        factory.setConnectTimeout(1500); // 1.5s connect timeout
+        factory.setReadTimeout(2500);    // 2.5s read timeout per mirror (max 7.5s across all mirrors)
         this.fastOsmRestTemplate = new RestTemplate(factory);
     }
 
@@ -87,7 +87,7 @@ public class OsmClient {
 
             // Construct ultra-fast Overpass QL query with QuadTile (qt) spatial indexing
             String overpassQl = String.format(Locale.US,
-                    "[out:json][timeout:10];" +
+                    "[out:json][timeout:3];" +
                     "(" +
                     "  node[\"office\"][\"name\"](%s);" +
                     "  way[\"office\"][\"name\"](%s);" +
@@ -98,7 +98,7 @@ public class OsmClient {
                     "  node[\"amenity\"][\"name\"](%s);" +
                     "  way[\"amenity\"][\"name\"](%s);" +
                     ");" +
-                    "out center qt 150;",
+                    "out center qt 400;",
                     bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr, bboxStr);
 
             HttpHeaders headers = new HttpHeaders();
@@ -135,13 +135,25 @@ public class OsmClient {
                         break;
                     }
                 } catch (Exception ex) {
-                    lastError = cleanErrorMessage(ex.getMessage());
-                    logger.warn("OSM OVERPASS mirror endpoint failed ({}): {}", endpoint, lastError);
+                    String cleanErr = cleanErrorMessage(ex.getMessage());
+                    if (!cleanErr.contains("SunCertPathBuilderException") && !cleanErr.contains("PKIX")) {
+                        lastError = cleanErr;
+                    }
+                    logger.warn("OSM OVERPASS mirror endpoint failed ({}): {}", endpoint, cleanErr);
                 }
             }
 
             if (!success) {
-                status = "OVERPASS_TIMEOUT_FALLBACK: " + (lastError != null ? lastError : "Overpass Server Busy");
+                logger.warn("OSM OVERPASS failed or timed out. Attempting Nominatim direct search fallback for '{}' in '{}'", query, location);
+                List<CandidateDTO> nomCandidates = searchNominatimDirect(query, location, areaName);
+                if (!nomCandidates.isEmpty()) {
+                    candidates.addAll(nomCandidates);
+                    status = "SUCCESS";
+                    success = true;
+                    logger.info("OSM NOMINATIM DIRECT FALLBACK: harvested {} candidates for '{}'", nomCandidates.size(), query);
+                } else {
+                    status = "OVERPASS_TIMEOUT_FALLBACK: " + (lastError != null ? lastError : "Overpass Server Busy");
+                }
             }
 
         } catch (Exception e) {
@@ -150,6 +162,78 @@ public class OsmClient {
         }
 
         return new OsmSearchResult(candidates, passes, status);
+    }
+
+    private List<CandidateDTO> searchNominatimDirect(String query, String location, String areaName) {
+        List<CandidateDTO> candidates = searchNominatimUrl(query + " " + location, query, areaName);
+        if (candidates.isEmpty()) {
+            candidates = searchNominatimUrl(location + " commercial", query, areaName);
+        }
+        if (candidates.isEmpty()) {
+            candidates = searchNominatimUrl(location + " office", query, areaName);
+        }
+        if (candidates.isEmpty()) {
+            candidates = searchNominatimUrl(location, query, areaName);
+        }
+        return candidates;
+    }
+
+    private List<CandidateDTO> searchNominatimUrl(String searchTerms, String sourceQuery, String areaName) {
+        List<CandidateDTO> candidates = new ArrayList<>();
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(NOMINATIM_URL)
+                    .queryParam("q", searchTerms)
+                    .queryParam("format", "json")
+                    .queryParam("limit", 50)
+                    .queryParam("addressdetails", "1")
+                    .build().toUriString();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "SetuLeads/1.0 (contact@setuleads.internal)");
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                if (root.isArray()) {
+                    for (JsonNode item : root) {
+                        String name = item.path("display_name").asText("");
+                        if (name.isEmpty()) continue;
+
+                        double lat = item.path("lat").asDouble(0.0);
+                        double lon = item.path("lon").asDouble(0.0);
+                        if (lat == 0.0 || lon == 0.0) continue;
+
+                        long osmId = item.path("osm_id").asLong(0);
+                        String osmType = item.path("osm_type").asText("node");
+
+                        CandidateDTO dto = new CandidateDTO();
+                        dto.setId("osm_nom_" + (osmId != 0 ? osmId : UUID.randomUUID().toString()));
+                        dto.setOsmType(osmType);
+                        dto.setOsmId(String.valueOf(osmId));
+
+                        String shortName = item.path("name").asText("");
+                        if (shortName.isEmpty() && name.contains(",")) {
+                            shortName = name.split(",")[0].trim();
+                        }
+                        dto.setBusinessName(!shortName.isEmpty() ? shortName : name);
+                        dto.setAddress(name);
+                        dto.setLatitude(lat);
+                        dto.setLongitude(lon);
+                        dto.setCategories(List.of("commercial.business", "office", "shop"));
+                        dto.setBusinessStatus("OPERATIONAL");
+                        dto.setSourceQuery(sourceQuery);
+                        dto.setProvider("OPENSTREETMAP");
+                        dto.setAreaName(areaName);
+
+                        candidates.add(dto);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Nominatim direct search fallback exception for '{}': {}", searchTerms, e.getMessage());
+        }
+        return candidates;
     }
 
     private String cleanErrorMessage(String msg) {

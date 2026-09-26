@@ -20,7 +20,7 @@ SetuLeads puts that process into one workstation interface:
 FIND ──► VERIFY ──► INSPECT ──► QUALIFY ──► SAVE ──► CONTACT
 ```
 
-It combines local map discovery, indexed web/social discovery, automated website technical checks, and a lightweight sales pipeline.
+It combines local map discovery, manual digital-presence capture, automated website technical checks, and a lightweight sales pipeline.
 
 ─────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ The core pipeline processes raw candidates through controlled normalization stag
 Search Query
    │
    ▼
-Multi-Source Discovery (Geoapify / OpenStreetMap / Social X-Ray / Text Harvester)
+Multi-Source Discovery (Geoapify / OpenStreetMap)
    │
    ▼
 Candidate Normalization & Deduplication
@@ -54,7 +54,7 @@ Outreach & SheetJS Excel Export
 
 ## 03  DISCOVERY ARCHITECTURE
 
-SetuLeads uses a multi-source model rather than relying on a single provider directory.
+SetuLeads uses official, API-based sourcing rather than relying on a single provider directory or on scraping third-party platforms.
 
 ### Local & Map POI Discovery
 - **Geoapify Places API**: Radius and spatial boundary queries for physical business locations.
@@ -62,237 +62,34 @@ SetuLeads uses a multi-source model rather than relying on a single provider dir
 
 *Primary use case*: Local contractors, restaurants, repair shops, professional services, and physical storefronts.
 
-### Digital Discovery & Social X-Ray
-- **Social X-Ray Adapter**: Query patterns targeting indexed public profiles across Instagram, LinkedIn, Linktree, and Facebook.
+### Digital-First Businesses: Smart Text Harvester
 
-*Why this exists*: Map directories work well for physical storefronts, but early-stage businesses, creative agencies, and digital-first services often build a social or Linktree presence long before setting up a map listing or traditional website.
+Map directories work well for physical storefronts, but early-stage businesses, creative agencies, and digital-first services often build a social or Linktree presence long before setting up a map listing or traditional website. Rather than scraping social platforms automatically (which would violate their Terms of Service), SetuLeads solves this with a manual, human-driven capture tool:
 
-─────────────────────────────────────────────
+- You browse a business's public Instagram/LinkedIn/Linktree page yourself, in your own browser
+- Copy the visible text (bio, contact info, links)
+- Paste it into the **Smart Text Harvester** modal
+- A regex-based parser extracts structured fields (business name, email, phone/WhatsApp, website, social handle) for your review before saving
 
-## 03.1  SOCIAL X-RAY DISCOVERY
-
-Not every business starts with a website or a map listing.
-
-Some businesses live on Instagram.  
-Some exist primarily through LinkedIn.  
-Some use Linktree as their entire digital presence.  
-
-Social X-Ray gives SetuLeads another way to find them.
-
-Social X-Ray is an advanced search technique using search-engine operators and targeted keywords to discover publicly indexed pages on specific domains.
-
-### Terminology
-
-- **X-Ray Search**: A targeted search technique that searches within a specific website/domain using search operators and contextual keywords.
-- **Search Operators**: Special instructions such as `site:` that restrict where search results come from.
-- **Exact-match terms**: Quoted phrases such as `"startup"` or `"Los Angeles"` that help constrain the search context.
-
-### Example Query Breakdown
-
-```
-site:instagram.com "startup" "Los Angeles" "@gmail.com"
-```
-
-- `site:instagram.com` → Search only pages indexed from Instagram.
-- `"startup"` → Search for the target business/category.
-- `"Los Angeles"` → Add geographic context.
-- `"@gmail.com"` → Look for pages/snippets containing a common public contact pattern.
-
-> **Engineering Note**: Search engine indexing can be incomplete or stale, and search engines only expose publicly indexed content. Social X-Ray is therefore designed as a candidate discovery and evidence layer, not a guaranteed extraction or complete coverage claim.
-
----
-
-### WHY MAP SEARCH IS NOT ENOUGH
-
-Traditional place/business discovery is useful for physical storefronts, but it can miss:
-
-- Early-stage startups
-- Creators and agencies
-- Digital-first businesses
-- Freelancers
-- Small businesses operating primarily through social media
-- Businesses using Linktree instead of a traditional website
-- Businesses with weak or incomplete directory presence
-
-```
-MAP SEARCH
-    │
-    ▼
-Physical businesses ──► Business listings ──► Known locations
-
-vs.
-
-SOCIAL X-RAY
-    │
-    ▼
-Indexed public profiles ──► Digital-first businesses ──► Social/contact signals
-```
-
-SetuLeads combines map POI search (Geoapify, OpenStreetMap) with Social X-Ray rather than replacing one with the other.
-
----
-
-### HOW AN X-RAY QUERY WORKS
-
-```
-┌────────────────────┐   ┌───────────┐   ┌────────────────┐   ┌───────────────┐
-│ site:instagram.com │ + │ "startup" │ + │ "Los Angeles"  │ + │ "@gmail.com"  │
-└────────────────────┘   └───────────┘   └────────────────┘   └───────────────┘
-     DOMAIN TARGET        INTENT TERM     LOCATION SIGNAL      CONTACT SIGNAL
-```
-
-- **Domain Target** (`site:instagram.com`): Restricts search results to indexed pages on the specified domain.
-- **Intent Term** (`"startup"`): Defines what kind of prospect or category we are searching for.
-- **Location Signal** (`"Los Angeles"`): Constrains results to a target region or city.
-- **Contact Signal** (`"@gmail.com"`): Surfaces pages containing public email patterns or outreach handles.
-
----
-
-### QUERY → RESULT PIPELINE
-
-```
-USER INTENT
-     │
-     ▼
-QUERY BUILDER ─────────────── [QUERY BUILT]
-     │
-     ▼
-SEARCH ENGINE INDEX ───────── [SEARCHING INDEX]
-     │
-     ▼
-INDEXED PUBLIC RESULTS ────── [RESULTS FOUND]
-     │
-     ▼
-RESULT EXTRACTION ─────────── [EXTRACTING SIGNALS]
-     │
-     ▼
-NORMALIZATION ─────────────── [NORMALIZING]
-     │
-     ▼
-RELEVANCE QUALIFICATION ──── [QUALIFYING]
-     │
-     ▼
-DEDUPLICATION ─────────────── [DEDUPLICATING]
-     │
-     ▼
-SETULEADS CRM ─────────────── [READY FOR CRM]
-```
-
----
-
-### X-RAY QUERY PATTERNS
-
-| Platform | Query Pattern Example | Target Purpose | Useful Signals | Limitations |
-| :--- | :--- | :--- | :--- | :--- |
-| **Instagram** | `site:instagram.com "startup" "Los Angeles"` | Surface creators, local boutiques, & visual services | Bio contact text, Linktree links, DMs | Dynamic JS rendering, index latency |
-| **LinkedIn** | `site:linkedin.com/company "startup" "Los Angeles"` | Discover corporate B2B services & tech startups | Employee count, official domains, tagline | Gated profile details, snippet limits |
-| **Linktree** | `site:linktr.ee "startup" "Los Angeles"` | Find micro-businesses using Linktree as sole web presence | Portfolio links, store URLs, booking links | Limited context on root linktree landing |
-| **Facebook** | `site:facebook.com "startup" "Los Angeles" "email"` | Target local service providers & community businesses | Operating hours, direct email, phone numbers | Privacy restrictions, snippet truncation |
-
----
-
-### HOW SETULEADS USES IT
-
-```
-DISCOVERY SOURCES
-(Geoapify + OpenStreetMap + Social X-Ray + Smart Text Harvester)
-                     │
-                     ▼
-          CANDIDATE NORMALIZATION
-                     │
-                     ▼
-          RELEVANCE QUALIFICATION
-                     │
-                     ▼
-               DEDUPLICATION
-                     │
-                     ▼
-             WEBSITE INSPECTION
-                     │
-                     ▼
-                 SETULEADS CRM
-```
-
-**Core Principle**:
-```
-SEARCH RESULT ≠ QUALIFIED BUSINESS
-```
-
-Social X-Ray is a **discovery mechanism**, not the qualification system itself. A search engine result does not automatically become a qualified lead:
-
-1. **Search Results** → Raw candidates
-2. **Candidates** → Normalized schema
-3. **Normalized Candidates** → Gemini relevance checked
-4. **Relevant Candidates** → Deduplicated against CRM
-5. **Candidates with Discovered Websites** → Automated HTTP/SSL/Mobile inspection
-6. **Qualified Prospects** → Saved to CRM workstation
-
----
-
-### SMART TEXT HARVESTER INTEGRATION
-
-> *"Search results are discovery evidence, not automatically structured CRM records."*
-
-```
-COPIED SEARCH / PAGE TEXT
-           │
-           ▼
-  SMART TEXT HARVESTER (Regex + Sanitizer)
-           │
-           ├──► Business Name
-           ├──► Email Address
-           ├──► Phone / WhatsApp
-           ├──► Website Domain
-           └──► Instagram / LinkedIn Handle
-           │
-           ▼
-   PREVIEW & VALIDATION MODAL
-           │
-           ▼
-    IMPORT TO CRM WORKSTATION
-```
-
----
-
-### WHY X-RAY SEARCH MATTERS
-
-- **01 — DISCOVERY DIVERSITY**: Adds indexed social/digital discovery alongside traditional geospatial sources.
-- **02 — DIGITAL-FIRST COVERAGE**: Surfaces businesses operating primarily through social media or Linktree without a traditional map listing.
-- **03 — TARGETED SEARCH**: Combines domain, intent, location, and contact patterns for high-precision queries.
-- **04 — MULTI-SOURCE SIGNALS**: Complements Geoapify and OpenStreetMap candidates to build rich prospect profiles.
-- **05 — LOW-FRICTION DISCOVERY**: Adaptable across industries, geographic markets, and social platforms.
-- **06 — HUMAN-IN-THE-LOOP OPTION**: Integrates with Smart Text Harvester so users preview and validate extracted candidates before saving.
-
----
-
-### ENGINEERING LIMITATIONS
-
-- Search engine indexing is incomplete and varies by platform.
-- Public search snippets can be stale or truncated.
-- Social profiles may represent personal accounts rather than operating businesses.
-- Similar business names across cities can produce false-positive matches.
-- Search engine ranking and indexing algorithms change dynamically.
-- Automated search queries are subject to provider terms, rate limits, and anti-bot protections.
-- Extracted contact details require human preview and semantic qualification.
-- X-Ray discovery is therefore treated as a **candidate discovery/evidence layer**, not ground truth.
+This keeps every digital-first lead sourced from something you personally found and chose to capture — no automated scraping, no ToS risk, and every result already has your own eyes on it before it enters the CRM.
 
 ─────────────────────────────────────────────
 
 ## 04  QUALIFICATION & ACCURACY
 
-A core principle in SetuLeads is that a raw search result is not automatically a business:
+A core principle in SetuLeads is that a raw discovery result is not automatically a qualified business:
 
 ```
-SEARCH RESULT != QUALIFIED BUSINESS
+DISCOVERY RESULT != QUALIFIED BUSINESS
 ```
 
-Search engines return blog posts, articles, directory aggregators, personal profiles, and unrelated pages alongside actual businesses. Treating every search result as a lead leads to polluted databases.
+Geoapify and OSM can return miscategorized points, administrative boundaries, or entities that aren't commercial businesses (parks, government offices, generic tagged nodes). Treating every raw result as a lead leads to a polluted database.
 
-SetuLeads normalizes and qualifies candidates before saving them:
+SetuLeads normalizes and qualifies candidates before elevating them to a usable lead:
 
-- **Entity Type & Relevance**: Evaluates whether the candidate is a business, individual, or directory listing.
-- **Geographic Context**: Validates location markers against search intent.
-- **Quality over Volume**: 40 clean, verified candidates are far more useful than 200 unvetted links containing false positives.
+- **Entity Type & Relevance**: Evaluates whether the candidate is a real commercial business versus non-commercial infrastructure.
+- **Geographic Context**: Validates location markers against search intent, requiring real coordinates from a recognized provider.
+- **Full Transparency**: Every candidate — qualified or not — is returned with its qualification tier and specific reasoning, rather than silently discarding anything that didn't pass. Quality over volume, but never quality *hidden from you*.
 
 ### Deduplication Strategy
 Candidate records are matched across incoming streams using:
@@ -367,7 +164,6 @@ graph TD
 
         DiscService --> Geoapify[Geoapify Client]
         DiscService --> Osm[OSM / Overpass Client]
-        DiscService --> XRay[Social X-Ray Adapter]
         DiscService --> Gemini[Gemini Relevance Qualifier]
     end
 
@@ -395,7 +191,6 @@ graph TD
 
 ### Discovery & Intelligence
 - **Geospatial**: Geoapify Places API, OpenStreetMap / Overpass API
-- **Social & Search**: Social X-Ray search adapters
 - **AI Qualification**: Google Gemini API (`RelevanceQualifier`)
 
 ─────────────────────────────────────────────
@@ -424,7 +219,7 @@ setuleads/
 │   │   │   ├── controller/       # REST API endpoints
 │   │   │   ├── dto/              # Request & Response Data Transfer Objects
 │   │   │   ├── entity/           # JPA Database Entities
-│   │   │   ├── integration/      # Geoapify, OSM, Gemini & X-Ray clients
+│   │   │   ├── integration/      # Geoapify, OSM & Gemini clients
 │   │   │   ├── repository/       # Spring Data Repositories
 │   │   │   └── service/          # Business logic & qualification engines
 │   │   └── test/java/com/setuleads/
@@ -447,19 +242,20 @@ setuleads/
 
 ### 1. Environment Configuration
 
-Create a `.env` file inside `frontend/`:
+Create a `.env` file inside `frontend/` (copy from `.env.example`, never commit the real file):
 ```env
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
-Configure backend environment variables in `backend/src/main/resources/application.properties` (or environment):
-```properties
+Configure backend environment variables in `backend/.env` or export them in your shell/IDE (see `backend/.env.example`):
+```env
+GEOAPIFY_API_KEY=your_geoapify_key
+GEMINI_API_KEY=your_gemini_key
+
+# Database Configuration (Optional - defaults to in-memory H2 if omitted)
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/setuleads
 SPRING_DATASOURCE_USERNAME=your_db_user
 SPRING_DATASOURCE_PASSWORD=your_db_password
-
-GEOAPIFY_API_KEY=your_geoapify_key
-GEMINI_API_KEY=your_gemini_key
 ```
 
 ### 2. Frontend Development Server
@@ -497,7 +293,7 @@ npm run test:backend
 
 ### Manual Verification Checklist
 - **Search Execution**: Run a real query (e.g., "Plumbers in Austin, TX") and verify candidates are returned.
-- **Provider Fallback**: Verify discovery handles API failures gracefully without crashing the UI.
+- **Provider Fallback**: Verify discovery handles API failures gracefully without crashing the UI, and that provider status is visible when a search returns zero raw signals.
 - **Smart Text Harvester**: Paste a raw text block into the Harvester modal and verify extracted fields.
 - **Website Inspection**: Trigger inspection on a lead and verify response code, SSL status, and viewport flags.
 - **Pipeline Stage Sync**: Drag a lead across Kanban columns and confirm database persistence.
@@ -517,7 +313,7 @@ npm run test:backend
 | `PUT` | `/api/v1/leads/{id}` | Update existing lead record details |
 | `DELETE` | `/api/v1/leads/{id}` | Remove a lead record |
 | `POST` | `/api/v1/leads/{id}/stage` | Update pipeline stage (`NEW`, `CONTACTED`, etc.) |
-| `POST` | `/api/v1/leads/harvest-paste` | Parse raw text stream and import candidate leads |
+| `POST` | `/api/v1/leads/harvest-paste` | Parse raw pasted text and import a manually-captured candidate |
 | `POST` | `/api/v1/leads/generate-outreach` | Generate personalized AI pitch hook for a candidate |
 | `GET` | `/api/v1/leads/{leadId}/activities` | Get activity log for a specific lead |
 | `POST` | `/api/v1/leads/{leadId}/activities` | Log a new note, call, or email activity |
@@ -554,23 +350,23 @@ SetuLeads utilizes a **Dark Editorial Brutalist** visual identity focused on inf
 
 ## 14  CURRENT LIMITATIONS
 
-- **Public Search Indexing**: Social X-Ray relies on publicly indexed web pages; results depend on engine index freshness.
-- **Candidate Filtering**: Automated relevance qualification drastically reduces noise, but edge cases can yield occasional false positives.
+- **Candidate Filtering**: Automated relevance qualification drastically reduces noise, but edge cases can yield occasional false positives — every candidate's reasoning is visible for review, not just the score.
 - **Observable Inspection**: Backend website checks evaluate observable technical headers, SSL certificates, and DOM markers—not server-side internal source code.
 - **Contact Completeness**: Some discovered local businesses publish phone numbers but omit direct email addresses.
+- **Digital-First Coverage**: Businesses with no map listing and no website require manual discovery via the Smart Text Harvester rather than automated sourcing — a deliberate trade-off to avoid scraping social platforms in violation of their Terms of Service.
 
 ─────────────────────────────────────────────
 
 ## 15  ROADMAP
 
-- Enhanced entity resolution for cross-referencing social profiles with local map listings.
 - Expanded technical audit rules for performance metrics and CMS detection.
 - Custom outreach email template builder with variable tag substitution.
 - Optional webhook notifications for automated background harvest runs.
+- Broader geographic query coverage and additional official, API-based discovery sources.
 
 ─────────────────────────────────────────────
 
-SETULEADS  
+SETULEADS
 Find the signal. Check the structure. Keep the lead.
 
 Built as a focused prospecting workstation.

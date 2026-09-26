@@ -32,3 +32,10 @@ backend/*.log
 *.suo
 *.sln
 *.sw?
+
+# Backend Secrets — profile overrides that might contain real values
+backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-secrets.yml
+backend/src/main/resources/application-prod.yml
+backend/.env
+backend/.env.local

@@ -531,7 +531,7 @@ public class RelevanceQualifier {
         } else if (finalScore >= 0.45) {
             confidenceLevel = "MEDIUM_CONFIDENCE";
             status = "RELEVANT";
-        } else if (finalScore >= 0.35) {
+        } else if (finalScore >= 0.15) {
             confidenceLevel = "LOW_CONFIDENCE";
             status = "RELEVANT";
         } else {

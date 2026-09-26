@@ -1,10 +1,8 @@
 import { DiscoveryComparison } from './DiscoveryComparison';
-import { XRayQueryVisualizer } from './XRayQueryVisualizer';
 import { XRayPipeline } from './XRayPipeline';
 import { QueryPatternTabs } from './QueryPatternTabs';
 import { SmartTextHarvesterDemo } from './SmartTextHarvesterDemo';
 import { LimitationsPanel } from './LimitationsPanel';
-import { ArrowDown } from '@phosphor-icons/react';
 
 export function SocialXRayCaseStudy() {
   return (
@@ -35,9 +33,6 @@ export function SocialXRayCaseStudy() {
 
       {/* Chapter 02: Map vs X-Ray Comparison */}
       <DiscoveryComparison />
-
-      {/* Chapter 03: Query Anatomy Visualizer */}
-      <XRayQueryVisualizer />
 
       {/* Chapter 04: Query → Result Pipeline */}
       <XRayPipeline />
@@ -94,69 +89,6 @@ export function SocialXRayCaseStudy() {
 
       {/* Chapter 08: Limitations */}
       <LimitationsPanel />
-
-      {/* Chapter 09: Architectural Transformation Architecture */}
-      <div className="inspected-panel bg-[#101010] border border-[#FF4A00]/40 p-6 sm:p-8 space-y-6">
-        <div className="border-b border-[#222222] pb-4">
-          <span className="font-mono text-xs uppercase text-[#FF4A00] tracking-widest block font-bold">
-            09. ARCHITECTURAL RESULT
-          </span>
-          <h3 className="font-serif text-2xl text-[#F4F0E8] mt-1" style={{ color: '#F4F0E8' }}>
-            The Full Social X-Ray Transformation Pipeline
-          </h3>
-        </div>
-
-        {/* Centerpiece Diagram */}
-        <div className="bg-[#080808] border border-[#262626] p-6 font-mono text-xs text-[#F4F0E8] space-y-4 overflow-x-auto">
-          <div className="text-center p-3 bg-[#151515] border border-[#FF4A00] text-[#00E599] font-bold">
-            site:instagram.com "startup" "Los Angeles" "@gmail.com"
-          </div>
-
-          <div className="flex justify-center text-[#FF4A00]">
-            <ArrowDown size={20} className="animate-bounce" />
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
-            <div className="p-2 bg-[#101010] border border-[#222222] text-[#FF4A00]">DOMAIN TARGET</div>
-            <div className="p-2 bg-[#101010] border border-[#222222] text-[#00E599]">INTENT TERM</div>
-            <div className="p-2 bg-[#101010] border border-[#222222] text-[#38BDF8]">LOCATION SIGNAL</div>
-          </div>
-
-          <div className="flex justify-center text-[#FF4A00]">
-            <ArrowDown size={20} />
-          </div>
-
-          <div className="text-center p-3 bg-[#101010] border border-[#222222] text-[#E5E0D8]">
-            SEARCH ENGINE INDEX (PUBLICLY INDEXED PAGES)
-          </div>
-
-          <div className="flex justify-center text-[#FF4A00]">
-            <ArrowDown size={20} />
-          </div>
-
-          <div className="text-center p-3 bg-[#151515] border border-[#FF4A00] text-[#F4F0E8] font-bold">
-            SETULEADS ENGINE (NORMALIZATION → GEMINI QUALIFICATION → DEDUPLICATION)
-          </div>
-
-          <div className="flex justify-center text-[#FF4A00]">
-            <ArrowDown size={20} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-center text-[11px]">
-            <div className="p-2 bg-[#101010] border border-[#222222] text-[#00E599] font-bold">
-              AUTOMATED WEBSITE INSPECTION
-            </div>
-            <div className="p-2 bg-[#101010] border border-[#FF4A00] text-[#FF4A00] font-bold">
-              SETULEADS CRM WORKSTATION
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between font-mono text-xs text-[#8E8982]">
-          <span>ENGINEERING STATEMENT:</span>
-          <span className="text-[#00E599] font-bold">Deterministic Inspection & Controlled AI Qualification</span>
-        </div>
-      </div>
     </div>
   );
 }

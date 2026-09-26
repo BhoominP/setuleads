@@ -55,6 +55,8 @@ export interface UnifiedSearchResult extends RawLeadResult {
   website_issues?: string[] | null;
   positive_evidence?: string[] | null;
   negative_evidence?: string[] | null;
+  matched_signals?: string[] | null;
+  negative_signals?: string[] | null;
   identity_confidence?: number | null;
   evidence_confidence?: number | null;
   relevance_confidence?: number | null;
